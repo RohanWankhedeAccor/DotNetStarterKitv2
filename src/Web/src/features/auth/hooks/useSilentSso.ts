@@ -39,20 +39,19 @@ export const useSilentSso = () => {
 
     const performSilentSso = async () => {
       try {
-        if (!firstAccountId) {
-          console.log('[SSO] No accounts available, user must login manually');
-          return;
-        }
+        // If MSAL has a cached account use acquireTokenSilent (fastest path).
+        // Otherwise try ssoSilent — it uses a hidden iframe to pick up an existing
+        // browser/corporate session (e.g. user is already signed into Office 365).
+        const tokenResponse = firstAccountId
+          ? await instance.acquireTokenSilent({ scopes: apiScopes, account: accounts[0] })
+          : await instance.ssoSilent({ scopes: apiScopes });
 
-        const account = accounts[0];
-        const tokenResponse = await instance.acquireTokenSilent({ scopes: apiScopes, account });
         const data = await exchangeAzureToken(tokenResponse.idToken, dispatch);
         console.log(`[SSO] Silent login successful for ${data.email}`);
       } catch (error) {
         // Expected when no Azure AD session exists — user can log in manually.
-        console.log('[SSO] Silent SSO not available, manual login required', error);
+        console.log('[SSO] Silent SSO not available, manual login required');
       } finally {
-        // Always clear the loading flag so the sidebar shows the correct state.
         dispatch(setLoading(false));
       }
     };
