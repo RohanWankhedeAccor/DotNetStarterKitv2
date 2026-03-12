@@ -85,7 +85,7 @@ public static class InfrastructureServiceExtensions
 
         var jwtIssuer = configuration["Jwt:Issuer"] ?? "DotNetStarterKitv2";
         var jwtAudience = configuration["Jwt:Audience"] ?? "DotNetStarterKitv2-App";
-        var jwtExpirationMinutes = int.Parse(configuration["Jwt:ExpirationMinutes"] ?? "60");
+        var jwtExpirationMinutes = int.TryParse(configuration["Jwt:ExpirationMinutes"], out var parsed) ? parsed : 60;
 
         services.AddSingleton<ITokenService>(new JwtTokenService(jwtSecret, jwtIssuer, jwtAudience, jwtExpirationMinutes));
 

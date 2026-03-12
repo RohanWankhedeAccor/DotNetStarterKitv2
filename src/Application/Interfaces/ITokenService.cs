@@ -21,4 +21,10 @@ public interface ITokenService
     /// <param name="token">The JWT token string to validate</param>
     /// <returns>The claims principal if valid; null if invalid or expired</returns>
     System.Security.Claims.ClaimsPrincipal? ValidateToken(string token);
+
+    /// <summary>
+    /// Token validity duration in minutes (e.g. 60).
+    /// Handlers use this to populate the <c>ExpiresIn</c> field in login responses.
+    /// </summary>
+    int ExpirationMinutes { get; }
 }

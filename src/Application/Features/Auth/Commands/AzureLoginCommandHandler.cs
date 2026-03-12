@@ -152,7 +152,7 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
             Email = user.Email,
             FullName = user.FullName,
             Roles = roles,
-            ExpiresIn = 3600 // 1 hour
+            ExpiresIn = _tokenService.ExpirationMinutes * 60
         };
     }
 }

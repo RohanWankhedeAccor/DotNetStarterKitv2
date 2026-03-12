@@ -69,7 +69,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             Email = user.Email,
             FullName = user.FullName,
             Roles = roles,
-            ExpiresIn = 3600 // 60 minutes
+            ExpiresIn = _tokenService.ExpirationMinutes * 60
         };
     }
 }

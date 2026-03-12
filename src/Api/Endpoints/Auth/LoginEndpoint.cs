@@ -36,19 +36,8 @@ public static class LoginEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            var command = new LoginCommand(request.Email, request.Password);
-            var result = await mediator.Send(command, cancellationToken);
-            return Results.Ok(result);
-        }
-        catch (Exception ex) when (ex.GetType().Name == "NotFoundException")
-        {
-            return Results.NotFound(new { error = ex.Message });
-        }
-        catch (Exception ex) when (ex.GetType().Name == "ValidationException")
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
+        var command = new LoginCommand(request.Email, request.Password);
+        var result = await mediator.Send(command, cancellationToken);
+        return Results.Ok(result);
     }
 }

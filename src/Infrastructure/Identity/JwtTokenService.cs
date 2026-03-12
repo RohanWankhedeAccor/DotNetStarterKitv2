@@ -16,6 +16,8 @@ public class JwtTokenService : ITokenService
     private readonly string _issuer;
     private readonly string _audience;
     private readonly int _expirationMinutes;
+    // Thread-safe — reuse across calls to avoid repeated reflection/regex init cost.
+    private readonly JwtSecurityTokenHandler _tokenHandler = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="JwtTokenService"/>.
@@ -37,6 +39,9 @@ public class JwtTokenService : ITokenService
         _audience = audience;
         _expirationMinutes = expirationMinutes;
     }
+
+    /// <inheritdoc />
+    public int ExpirationMinutes => _expirationMinutes;
 
     /// <summary>
     /// Generates a JWT token for the specified user.
@@ -72,8 +77,7 @@ public class JwtTokenService : ITokenService
             signingCredentials: credentials
         );
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        return tokenHandler.WriteToken(token);
+        return _tokenHandler.WriteToken(token);
     }
 
     /// <summary>
@@ -86,9 +90,8 @@ public class JwtTokenService : ITokenService
         try
         {
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
-            var tokenHandler = new JwtSecurityTokenHandler();
 
-            var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
+            var principal = _tokenHandler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = key,

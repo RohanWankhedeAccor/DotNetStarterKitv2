@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useMsal } from '@azure/msal-react';
 import { apiScopes } from '../../../lib/msalConfig';
-import { setUser } from '../../../lib/redux/authSlice';
+import { clearUser } from '../../../lib/redux/authSlice';
+import { exchangeAzureToken } from '../exchangeAzureToken';
 import { toast } from 'sonner';
 
 /**
@@ -41,39 +42,8 @@ export const useAzureLogin = () => {
       // and can be validated by the backend without admin consent or custom API scopes.
       const azureAdToken = loginResponse.idToken;
 
-      // Step 3: Exchange Azure AD ID token for internal JWT
-      const response = await fetch('/api/v1/auth/azure-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          azureAdToken,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.detail || 'Failed to authenticate with Azure AD'
-        );
-      }
-
-      // Step 4: Parse login response from backend
-      const loginResponseData = await response.json();
-
-      // Step 5: Store user info and token in Redux
-      dispatch(
-        setUser({
-          userId: loginResponseData.userId,
-          email: loginResponseData.email,
-          fullName: loginResponseData.fullName,
-          roles: loginResponseData.roles,
-          token: loginResponseData.token,
-          expiresIn: loginResponseData.expiresIn,
-          authSource: 'AzureAd',
-        })
-      );
+      // Step 3: Exchange Azure AD ID token for internal JWT and store in Redux
+      const loginResponseData = await exchangeAzureToken(azureAdToken, dispatch);
 
       toast.success(
         `Welcome, ${loginResponseData.fullName}! You're now logged in with Azure AD.`
@@ -100,17 +70,7 @@ export const useAzureLogin = () => {
     try {
       setIsLoading(true);
       await instance.logoutPopup();
-      dispatch(
-        setUser({
-          userId: null,
-          email: null,
-          fullName: null,
-          roles: [],
-          token: null,
-          expiresIn: 0,
-          authSource: null,
-        })
-      );
+      dispatch(clearUser());
       toast.success('You have been logged out.');
     } catch (err) {
       console.error('Logout error:', err);
