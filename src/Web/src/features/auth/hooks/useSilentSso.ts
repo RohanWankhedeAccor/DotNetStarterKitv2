@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMsal } from '@azure/msal-react';
 import { selectIsAuthenticated } from '../../../lib/redux/store';
+import { setLoading } from '../../../lib/redux/authSlice';
 import { apiScopes } from '../../../lib/msalConfig';
 import { exchangeAzureToken } from '../exchangeAzureToken';
 
@@ -30,30 +31,29 @@ export const useSilentSso = () => {
   const firstAccountId = accounts[0]?.homeAccountId;
 
   useEffect(() => {
-    // Skip if user is already authenticated
-    if (isAuthenticated || !firstAccountId) {
-      if (!firstAccountId) {
-        console.log('[SSO] No accounts available, user must login manually');
-      }
+    // Already authenticated — nothing to do, clear loading flag.
+    if (isAuthenticated) {
+      dispatch(setLoading(false));
       return;
     }
 
     const performSilentSso = async () => {
       try {
+        if (!firstAccountId) {
+          console.log('[SSO] No accounts available, user must login manually');
+          return;
+        }
+
         const account = accounts[0];
-
-        // Try to silently acquire token — use ID token for backend validation
-        const tokenResponse = await instance.acquireTokenSilent({
-          scopes: apiScopes,
-          account,
-        });
-
-        const loginResponseData = await exchangeAzureToken(tokenResponse.idToken, dispatch);
-        console.log(`[SSO] Silent login successful for ${loginResponseData.email}`);
+        const tokenResponse = await instance.acquireTokenSilent({ scopes: apiScopes, account });
+        const data = await exchangeAzureToken(tokenResponse.idToken, dispatch);
+        console.log(`[SSO] Silent login successful for ${data.email}`);
       } catch (error) {
-        // Silent SSO failed — expected if no Azure AD session or session expired.
-        // User will need to manually click "Login with Azure AD".
+        // Expected when no Azure AD session exists — user can log in manually.
         console.log('[SSO] Silent SSO not available, manual login required', error);
+      } finally {
+        // Always clear the loading flag so the sidebar shows the correct state.
+        dispatch(setLoading(false));
       }
     };
 

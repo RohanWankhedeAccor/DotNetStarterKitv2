@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from './lib/api-client'
 import { UserProfileMenu } from './features/auth/components/UserProfileMenu'
 import { AzureLoginButton } from './features/auth/components/AzureLoginButton'
-import { selectIsAuthenticated } from './lib/redux/store'
+import { selectIsAuthenticated, selectAuth } from './lib/redux/store'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,41 +84,10 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
 
 export default function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated)
+  const { isLoading: isSsoLoading } = useSelector(selectAuth)
   const [view, setView] = useState<View>('dashboard')
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-
-  // Show login screen if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a] text-white">
-        <div className="w-full max-w-md p-8 rounded-2xl border border-white/[0.08] bg-[#111113]/50 backdrop-blur-xl">
-          <div className="flex flex-col items-center gap-6">
-            {/* Logo */}
-            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-2xl font-black shadow-lg shadow-indigo-500/20">
-              D
-            </div>
-
-            {/* Title */}
-            <div className="text-center">
-              <h1 className="text-2xl font-bold mb-2">Welcome Back</h1>
-              <p className="text-sm text-white/50">Sign in with your Azure AD account to continue</p>
-            </div>
-
-            {/* Login Button */}
-            <div className="w-full">
-              <AzureLoginButton fullWidth variant="default" showIcon />
-            </div>
-
-            {/* Footer */}
-            <p className="text-xs text-white/30 text-center">
-              Powered by Azure AD Authentication
-            </p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0a] text-white font-sans">
@@ -142,10 +111,19 @@ export default function App() {
           )}
         </div>
 
-        {/* Profile Menu - Interactive with Logout */}
+        {/* Profile / Auth area */}
         {sidebarOpen && (
           <div className="mx-3 mt-4 mb-2">
-            <UserProfileMenu />
+            {isSsoLoading ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 text-white/30 text-sm">
+                <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-indigo-400 animate-spin flex-shrink-0" />
+                <span>Signing in...</span>
+              </div>
+            ) : isAuthenticated ? (
+              <UserProfileMenu />
+            ) : (
+              <AzureLoginButton variant="default" fullWidth showIcon />
+            )}
           </div>
         )}
 

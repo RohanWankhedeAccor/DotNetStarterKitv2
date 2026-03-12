@@ -33,7 +33,9 @@ const initialState: AuthState = {
     authSource: null,
   },
   isAuthenticated: false,
-  isLoading: false,
+  // true on load: the app assumes an SSO check is in-flight until useSilentSso resolves.
+  // This prevents a flash of the "Login" button before the silent check completes.
+  isLoading: true,
 };
 
 const authSlice = createSlice({
