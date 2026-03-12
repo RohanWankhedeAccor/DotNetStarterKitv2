@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useMsal } from '@azure/msal-react';
+import { InteractionStatus } from '@azure/msal-browser';
 import { selectIsAuthenticated } from '../../../lib/redux/store';
 import { setLoading } from '../../../lib/redux/authSlice';
 import { apiScopes } from '../../../lib/msalConfig';
@@ -23,7 +24,7 @@ import { exchangeAzureToken } from '../exchangeAzureToken';
  */
 export const useSilentSso = () => {
   const dispatch = useDispatch();
-  const { instance, accounts } = useMsal();
+  const { instance, accounts, inProgress } = useMsal();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   // Use homeAccountId as dependency instead of the accounts array reference.
   // MSAL recreates the array on every render even if contents are unchanged,
@@ -31,6 +32,11 @@ export const useSilentSso = () => {
   const firstAccountId = accounts[0]?.homeAccountId;
 
   useEffect(() => {
+    // Wait until MSAL finishes initializing and loading cached accounts from
+    // localStorage. During startup, accounts[] is empty even if a cached
+    // session exists — firing SSO here would always fail and show the Login button.
+    if (inProgress !== InteractionStatus.None) return;
+
     // Already authenticated — nothing to do, clear loading flag.
     if (isAuthenticated) {
       dispatch(setLoading(false));
@@ -57,5 +63,5 @@ export const useSilentSso = () => {
     };
 
     performSilentSso();
-  }, [instance, firstAccountId, isAuthenticated, dispatch]);
+  }, [instance, firstAccountId, inProgress, isAuthenticated, dispatch]);
 };
