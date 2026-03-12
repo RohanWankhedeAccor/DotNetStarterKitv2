@@ -111,15 +111,10 @@ export default function App() {
           )}
         </div>
 
-        {/* Profile / Auth area */}
-        {sidebarOpen && (
+        {/* Profile / Auth area — blank while SSO resolves, then profile or login button */}
+        {sidebarOpen && !isSsoLoading && (
           <div className="mx-3 mt-4 mb-2">
-            {isSsoLoading ? (
-              <div className="flex items-center gap-2 px-3 py-2.5 text-white/30 text-sm">
-                <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-indigo-400 animate-spin flex-shrink-0" />
-                <span>Signing in...</span>
-              </div>
-            ) : isAuthenticated ? (
+            {isAuthenticated ? (
               <UserProfileMenu />
             ) : (
               <AzureLoginButton variant="default" fullWidth showIcon />
