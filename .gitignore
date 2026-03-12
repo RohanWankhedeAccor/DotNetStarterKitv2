@@ -132,6 +132,7 @@ tmp/
 # Windows artefacts
 nul
 
+
 # Secrets and credentials
 *.pem
 *.key
