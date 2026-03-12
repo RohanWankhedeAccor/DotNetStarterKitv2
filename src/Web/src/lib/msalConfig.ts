@@ -19,8 +19,11 @@ const msalConfig: Configuration = {
     postLogoutRedirectUri: window.location.origin,
   },
   cache: {
-    cacheLocation: 'sessionStorage', // Session storage is recommended for SPAs
-    storeAuthStateInCookie: false,
+    // localStorage persists across tab/browser restarts so acquireTokenSilent
+    // finds the cached account on every visit after the first login.
+    // sessionStorage would clear on tab close, forcing re-login every time.
+    cacheLocation: 'localStorage',
+    storeAuthStateInCookie: true, // fallback for browsers that block third-party cookies
   },
   system: {
     loggerOptions: {
