@@ -1,0 +1,144 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options directory
+.vs/
+.vscode/
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.sln.iml
+*.swp
+*.swo
+*~
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+.packages/
+
+# User Secrets (local development)
+[Uu]ser[Ss]ecrets/
+appsettings.*.local.json
+
+# Development settings contain real Azure AD Tenant/Client IDs and JWT keys.
+# Copy appsettings.Development.example.json → appsettings.Development.json and fill in your values.
+appsettings.Development.json
+
+# Environment files (local development)
+.env
+.env.local
+.env.*.local
+.env.production
+src/Web/.env
+src/Web/.env.local
+
+# Node modules
+node_modules/
+npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite build output
+dist/
+dist-ssr/
+coverage/
+*.local
+
+# Testing
+.nyc_output/
+coverage/
+*.lcov
+
+# Database files
+*.mdf
+*.ldf
+*.db
+*.db-*
+
+# Entity Framework
+# Note: migrations/ must NOT be excluded — EF Core migrations are source code
+# and are required to recreate the database schema from scratch.
+
+# TypeScript
+*.tsbuildinfo
+
+# System files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+*.swp
+*.swo
+*~
+.AppleDouble
+.LSOverride
+
+# IDE settings files (except recommended ones)
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+
+# AWS
+.aws/
+.awsaccess
+
+# Azure
+.azure/
+
+# Temp files
+*.tmp
+temp/
+tmp/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+
+# Windows artefacts
+nul
+
+# Secrets and credentials
+*.pem
+*.key
+*.pfx
+secrets.json
+credentials.json
+appsettings.production.json
+
+# CI/CD
+.github/workflows/*.log
