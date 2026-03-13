@@ -20,7 +20,9 @@ public static class GetProductsEndpoint
             .WithOpenApi()
             .WithSummary("Get all products (paginated)")
             .WithDescription("Retrieves a paginated list of products. PageSize is clamped to a maximum of 100.")
-            .Produces<PagedResponse<ProductDto>>(StatusCodes.Status200OK);
+            .Produces<PagedResponse<ProductDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetProducts(

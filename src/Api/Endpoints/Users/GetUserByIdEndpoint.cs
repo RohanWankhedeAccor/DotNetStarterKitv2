@@ -20,7 +20,9 @@ public static class GetUserByIdEndpoint
             .WithSummary("Get a user by ID")
             .WithDescription("Retrieves a single user by their unique identifier.")
             .Produces<UserDto>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetUserById(

@@ -20,7 +20,9 @@ public static class GetProductByIdEndpoint
             .WithSummary("Get a product by ID")
             .WithDescription("Retrieves a single product by its unique identifier.")
             .Produces<ProductDto>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetProductById(

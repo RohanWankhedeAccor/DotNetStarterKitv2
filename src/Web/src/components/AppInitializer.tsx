@@ -1,5 +1,6 @@
 import React, { ReactNode } from 'react';
 import { useSilentSso } from '../features/auth/hooks/useSilentSso';
+import { useTokenRefresh } from '../features/auth/hooks/useTokenRefresh';
 
 /**
  * App initializer component that runs setup logic on app load.
@@ -16,8 +17,8 @@ import { useSilentSso } from '../features/auth/hooks/useSilentSso';
 export const AppInitializer: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  // Run silent SSO on app load
   useSilentSso();
+  useTokenRefresh();
 
   return <>{children}</>;
 };

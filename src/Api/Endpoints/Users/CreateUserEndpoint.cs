@@ -21,7 +21,9 @@ public static class CreateUserEndpoint
             .WithDescription("Creates a new user account with the provided email, name, and password.")
             .Produces<UserDto>(StatusCodes.Status201Created)
             .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status409Conflict);
+            .Produces(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> CreateUser(

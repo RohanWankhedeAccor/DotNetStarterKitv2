@@ -20,7 +20,9 @@ public static class GetUsersEndpoint
             .WithOpenApi()
             .WithSummary("Get all users (paginated)")
             .WithDescription("Retrieves a paginated list of users. PageSize is clamped to a maximum of 100.")
-            .Produces<PagedResponse<UserDto>>(StatusCodes.Status200OK);
+            .Produces<PagedResponse<UserDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetUsers(

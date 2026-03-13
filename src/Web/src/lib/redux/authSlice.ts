@@ -13,6 +13,8 @@ export interface AuthUser {
   roles: string[];
   token: string | null;
   expiresIn: number;
+  /** Unix ms timestamp of when the token expires. Used by useTokenRefresh for proactive refresh. */
+  tokenExpiresAt: number;
   authSource: 'Local' | 'AzureAd' | null;
 }
 
@@ -30,6 +32,7 @@ const initialState: AuthState = {
     roles: [],
     token: null,
     expiresIn: 0,
+    tokenExpiresAt: 0,
     authSource: null,
   },
   isAuthenticated: false,
@@ -75,9 +78,10 @@ const authSlice = createSlice({
     /**
      * Refresh token (called before expiration).
      */
-    refreshToken: (state, action: PayloadAction<{ token: string; expiresIn: number }>) => {
+    refreshToken: (state, action: PayloadAction<{ token: string; expiresIn: number; tokenExpiresAt: number }>) => {
       state.user.token = action.payload.token;
       state.user.expiresIn = action.payload.expiresIn;
+      state.user.tokenExpiresAt = action.payload.tokenExpiresAt;
     },
   },
 });

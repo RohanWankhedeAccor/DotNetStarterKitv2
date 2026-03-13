@@ -22,4 +22,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!-- Expose internal types to test projects -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Unit" />
+    <InternalsVisibleTo Include="Integration" />
+  </ItemGroup>
+
 </Project>

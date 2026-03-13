@@ -32,6 +32,7 @@ export async function exchangeAzureToken(
       roles: data.roles,
       token: data.token,
       expiresIn: data.expiresIn,
+      tokenExpiresAt: Date.now() + data.expiresIn * 1000,
       authSource: 'AzureAd',
     }),
   )
