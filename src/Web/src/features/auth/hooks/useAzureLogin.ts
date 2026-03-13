@@ -4,6 +4,7 @@ import { useMsal } from '@azure/msal-react';
 import { apiScopes } from '../../../lib/msalConfig';
 import { clearUser } from '../../../lib/redux/authSlice';
 import { exchangeAzureToken } from '../exchangeAzureToken';
+import apiClient from '../../../lib/api-client';
 import { toast } from 'sonner';
 
 /**
@@ -38,11 +39,11 @@ export const useAzureLogin = () => {
         prompt: 'select_account',
       });
 
-      // Step 2: Use the ID token directly — it is signed for our SPA Client ID
-      // and can be validated by the backend without admin consent or custom API scopes.
-      const azureAdToken = loginResponse.idToken;
+      // Step 2: Use the access token — scoped to api://...access_as_user.
+      // The backend AzureAdTokenValidator validates audience = api://{apiClientId}.
+      const azureAdToken = loginResponse.accessToken;
 
-      // Step 3: Exchange Azure AD ID token for internal JWT and store in Redux
+      // Step 3: Exchange Azure AD access token for internal JWT (set as HttpOnly cookie)
       const loginResponseData = await exchangeAzureToken(azureAdToken, dispatch);
 
       toast.success(
@@ -69,6 +70,8 @@ export const useAzureLogin = () => {
   const logoutFromAzureAd = async () => {
     try {
       setIsLoading(true);
+      // Clear the HttpOnly cookie on the server first, then sign out of Azure AD.
+      await apiClient.post('/api/v1/auth/logout').catch(() => {/* ignore if already expired */});
       await instance.logoutPopup();
       dispatch(clearUser());
       toast.success('You have been logged out.');

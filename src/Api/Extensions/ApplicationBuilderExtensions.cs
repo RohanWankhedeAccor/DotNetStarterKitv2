@@ -70,7 +70,9 @@ public static class ApplicationBuilderExtensions
     {
         // Auth endpoints
         app.MapLogin();
-        app.MapAzureLogin(); // Phase 12: Azure AD token exchange
+        app.MapAzureLogin();  // Azure AD token exchange
+        app.MapLogout();      // Clear HttpOnly cookie
+        app.MapRefresh();     // Rotate HttpOnly cookie
 
         // User endpoints
         app.MapCreateUser();

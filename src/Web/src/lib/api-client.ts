@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { store } from './redux/store'
 
 // Use empty base URL in dev so requests go through Vite proxy (/api → https://localhost:5001)
 // This avoids browser SSL certificate warnings with self-signed dev certs
@@ -11,15 +10,10 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-})
-
-// Request interceptor: attach JWT token from Redux store to every request
-apiClient.interceptors.request.use((config) => {
-  const token = store.getState().auth.user.token
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
+  // withCredentials ensures the browser sends the HttpOnly auth_token cookie on every
+  // cross-origin request and receives Set-Cookie headers from the server.
+  // In dev, Vite proxies /api to the backend so all requests appear same-origin.
+  withCredentials: true,
 })
 
 // Response interceptor for error handling

@@ -46,6 +46,22 @@ public static class ServiceCollectionExtensions
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };
+
+                // Read token from HttpOnly cookie when present.
+                // Falls back to Authorization: Bearer header if cookie is absent
+                // (keeps integration tests that send the header working without changes).
+                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var cookie = context.Request.Cookies["auth_token"];
+                        if (!string.IsNullOrEmpty(cookie))
+                        {
+                            context.Token = cookie;
+                        }
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         services.AddAuthorization();

@@ -39,11 +39,11 @@ const msalConfig: Configuration = {
 };
 
 /**
- * OIDC scopes for login. These never require admin consent.
- * We send the resulting ID token to the backend for validation.
- * The ID token audience = SPA Client ID, which the backend validates directly.
+ * Scope for acquiring an access token addressed to our API.
+ * The audience of this token is `api://{apiClientId}`, which is what the
+ * backend's AzureAdTokenValidator now accepts (access token, not ID token).
  */
-export const apiScopes = ['openid', 'profile', 'email'];
+export const apiScopes = ['api://ae60f82b-2dc4-4212-884a-3a50d79bb768/access_as_user'];
 
 /**
  * Initialize MSAL Public Client Application.
