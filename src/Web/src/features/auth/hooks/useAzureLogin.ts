@@ -39,9 +39,9 @@ export const useAzureLogin = () => {
         prompt: 'select_account',
       });
 
-      // Step 2: Use the access token — scoped to api://...access_as_user.
-      // The backend AzureAdTokenValidator validates audience = api://{apiClientId}.
-      const azureAdToken = loginResponse.accessToken;
+      // Step 2: Use the ID token — signed for our SPA Client ID.
+      // Standard OIDC scopes never trigger admin consent screens.
+      const azureAdToken = loginResponse.idToken;
 
       // Step 3: Exchange Azure AD access token for internal JWT (set as HttpOnly cookie)
       const loginResponseData = await exchangeAzureToken(azureAdToken, dispatch);

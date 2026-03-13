@@ -23,6 +23,7 @@ internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
 {
     private readonly string _tenantId;
     private readonly string _apiClientId;
+    private readonly string _spaClientId;
     private readonly IConfigurationManager<OpenIdConnectConfiguration> _configurationManager;
     private readonly JwtSecurityTokenHandler _tokenHandler;
 
@@ -31,10 +32,12 @@ internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
     /// </summary>
     /// <param name="tenantId">Azure AD tenant ID (UUID).</param>
     /// <param name="apiClientId">API Application (Client) ID from Azure AD app registration.</param>
-    public AzureAdTokenValidator(string tenantId, string apiClientId)
+    /// <param name="spaClientId">SPA Application (Client) ID — audience of ID tokens issued to the frontend.</param>
+    public AzureAdTokenValidator(string tenantId, string apiClientId, string spaClientId)
     {
         _tenantId = tenantId;
         _apiClientId = apiClientId;
+        _spaClientId = spaClientId;
         // MapInboundClaims = false keeps original JWT claim names (e.g. "oid", "email",
         // "preferred_username") instead of mapping them to long .NET CLR URI strings.
         _tokenHandler = new JwtSecurityTokenHandler { MapInboundClaims = false };
@@ -71,7 +74,8 @@ internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
                 },
                 ValidAudiences = new[]
                 {
-                    $"api://{_apiClientId}",   // Access token audience — MSAL acquires with access_as_user scope
+                    _spaClientId,              // ID token audience (frontend SPA client ID)
+                    $"api://{_apiClientId}",   // Access token audience (future, when admin consent available)
                 },
                 IssuerSigningKeys = config.SigningKeys,
                 ValidateIssuerSigningKey = true,
