@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import api from '@/lib/api-client'
 import { Product, ProductDTO, ProductsResponse } from '../types'
 import { queryClient } from '@/lib/query-client'
@@ -37,7 +38,7 @@ export function useCreateProduct() {
       toast.success('Product created successfully')
       queryClient.invalidateQueries({ queryKey: ['products'] })
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<{ detail?: string }>) => {
       const message = error.response?.data?.detail || 'Failed to create product'
       toast.error(message)
     },
