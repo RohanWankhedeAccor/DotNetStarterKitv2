@@ -17,15 +17,6 @@ interface User {
   createdAt: string
 }
 
-interface Product {
-  id: number
-  name: string
-  description: string
-  price: number
-  status: number
-  createdAt: string
-}
-
 interface PagedResponse<T> {
   items: T[]
   totalCount: number
@@ -45,14 +36,6 @@ function useUsers(page = 1) {
   })
 }
 
-function useProducts(page = 1) {
-  return useQuery<PagedResponse<Product>>({
-    queryKey: ['products', page],
-    queryFn: () =>
-      apiClient.get(`/api/v1/products?pageNumber=${page}&pageSize=8`).then((r) => r.data),
-  })
-}
-
 function useCreateUser() {
   const qc = useQueryClient()
   return useMutation({
@@ -62,23 +45,13 @@ function useCreateUser() {
   })
 }
 
-function useCreateProduct() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (data: { name: string; description: string; price: number }) =>
-      apiClient.post('/api/v1/products', data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['products'] }),
-  })
-}
-
 // ─── Navigation config ────────────────────────────────────────────────────────
 
-type View = 'dashboard' | 'users' | 'products'
+type View = 'dashboard' | 'users'
 
 const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '⊞' },
   { id: 'users', label: 'Users', icon: '👤' },
-  { id: 'products', label: 'Products', icon: '📦' },
 ]
 
 // ─── Root App ─────────────────────────────────────────────────────────────────
@@ -112,7 +85,7 @@ export default function App() {
           )}
         </div>
 
-        {/* Profile / Auth area — blank while SSO resolves, then profile or login button */}
+        {/* Profile / Auth area */}
         {sidebarOpen && !isSsoLoading && (
           <div className="mx-3 mt-4 mb-2">
             {isAuthenticated ? (
@@ -182,7 +155,7 @@ export default function App() {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">🔍</span>
             <input
               type="text"
-              placeholder="Search users, products..."
+              placeholder="Search users..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all"
@@ -213,7 +186,6 @@ export default function App() {
         <main className="flex-1 overflow-auto p-6">
           {view === 'dashboard' && <DashboardView setView={setView} />}
           {view === 'users' && <UsersView search={search} />}
-          {view === 'products' && <ProductsView search={search} />}
         </main>
       </div>
     </div>
@@ -224,7 +196,6 @@ export default function App() {
 
 function DashboardView({ setView }: { setView: (v: View) => void }) {
   const { data: users } = useUsers(1)
-  const { data: products } = useProducts(1)
 
   const stats = [
     {
@@ -235,15 +206,6 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
       border: 'border-indigo-500/20',
       text: 'text-indigo-400',
       change: '+12%',
-    },
-    {
-      label: 'Products',
-      value: products?.totalCount ?? '–',
-      icon: '📦',
-      color: 'from-emerald-500/20 to-teal-500/10',
-      border: 'border-emerald-500/20',
-      text: 'text-emerald-400',
-      change: '+4%',
     },
     {
       label: 'Active Sessions',
@@ -278,7 +240,7 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-3 gap-4 mb-8">
         {stats.map((s) => (
           <div
             key={s.label}
@@ -296,68 +258,33 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
         ))}
       </div>
 
-      {/* Recent data side by side */}
-      <div className="grid grid-cols-2 gap-5">
-        {/* Recent Users */}
-        <div className="bg-[#111113] border border-white/[0.07] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Recent Users</h2>
-              <p className="text-[11px] text-white/30 mt-0.5">{users?.totalCount ?? 0} total</p>
-            </div>
-            <button
-              onClick={() => setView('users')}
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-            >
-              View all →
-            </button>
+      {/* Recent Users */}
+      <div className="bg-[#111113] border border-white/[0.07] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Recent Users</h2>
+            <p className="text-[11px] text-white/30 mt-0.5">{users?.totalCount ?? 0} total</p>
           </div>
-          <div className="divide-y divide-white/[0.05]">
-            {users?.items.slice(0, 4).map((u) => (
-              <div key={u.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                  {u.fullName.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{u.fullName}</p>
-                  <p className="text-[11px] text-white/40 truncate">{u.email}</p>
-                </div>
-                <StatusDot active={u.status === 0} />
-              </div>
-            )) ?? <SkeletonRows count={4} />}
-          </div>
+          <button
+            onClick={() => setView('users')}
+            className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+          >
+            View all →
+          </button>
         </div>
-
-        {/* Recent Products */}
-        <div className="bg-[#111113] border border-white/[0.07] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Recent Products</h2>
-              <p className="text-[11px] text-white/30 mt-0.5">{products?.totalCount ?? 0} total</p>
-            </div>
-            <button
-              onClick={() => setView('products')}
-              className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
-            >
-              View all →
-            </button>
-          </div>
-          <div className="divide-y divide-white/[0.05]">
-            {products?.items.slice(0, 4).map((p) => (
-              <div key={p.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20 flex items-center justify-center text-sm flex-shrink-0">
-                  📦
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white truncate">{p.name}</p>
-                  <p className="text-[11px] text-white/40 truncate">{p.description}</p>
-                </div>
-                <span className="text-sm font-semibold text-emerald-400 font-mono flex-shrink-0">
-                  ${p.price.toFixed(2)}
-                </span>
+        <div className="divide-y divide-white/[0.05]">
+          {users?.items.slice(0, 4).map((u) => (
+            <div key={u.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {u.fullName.charAt(0).toUpperCase()}
               </div>
-            )) ?? <SkeletonRows count={4} />}
-          </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-white truncate">{u.fullName}</p>
+                <p className="text-[11px] text-white/40 truncate">{u.email}</p>
+              </div>
+              <StatusDot active={u.status === 0} />
+            </div>
+          )) ?? <SkeletonRows count={4} />}
         </div>
       </div>
     </div>
@@ -503,135 +430,6 @@ function UsersView({ search }: { search: string }) {
   )
 }
 
-// ─── Products View ────────────────────────────────────────────────────────────
-
-function ProductsView({ search }: { search: string }) {
-  const [page, setPage] = useState(1)
-  const [showForm, setShowForm] = useState(false)
-  const { data, isLoading, error } = useProducts(page)
-  const createProduct = useCreateProduct()
-  const [form, setForm] = useState({ name: '', description: '', price: '' })
-  const [formError, setFormError] = useState('')
-
-  const filtered = data?.items.filter(
-    (p) =>
-      !search ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase())
-  )
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setFormError('')
-    try {
-      await createProduct.mutateAsync({ ...form, price: parseFloat(form.price) })
-      setForm({ name: '', description: '', price: '' })
-      setShowForm(false)
-    } catch (err) {
-      const e = err as AxiosError<{ detail?: string }>
-      setFormError(e.response?.data?.detail || e.message || 'Failed to create product')
-    }
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Products</h1>
-          <p className="text-sm text-white/40 mt-0.5">
-            {data ? `${data.totalCount} products in catalog` : 'Loading...'}
-          </p>
-        </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-emerald-500/20"
-        >
-          <span className="text-base leading-none">+</span>
-          New Product
-        </button>
-      </div>
-
-      {showForm && (
-        <div className="mb-5 bg-[#111113] border border-white/[0.08] rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-white/70 mb-4">Create New Product</h2>
-          {formError && (
-            <div className="mb-3 flex items-start gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2.5 rounded-xl">
-              <span className="mt-px">⚠</span>
-              {formError}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-3">
-            <input
-              required
-              placeholder="Product name"
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.07] text-white transition-all"
-            />
-            <input
-              required
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.07] text-white transition-all"
-            />
-            <input
-              required
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Price (e.g. 29.99)"
-              value={form.price}
-              onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))}
-              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:border-emerald-500/60 focus:bg-white/[0.07] text-white transition-all"
-            />
-            <div className="col-span-3 flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2.5 text-sm text-white/40 hover:text-white rounded-xl transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={createProduct.isPending}
-                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors"
-              >
-                {createProduct.isPending ? 'Creating...' : 'Create Product'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {isLoading ? (
-        <div className="grid grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-[#111113] border border-white/[0.07] rounded-2xl p-5 animate-pulse h-40" />
-          ))}
-        </div>
-      ) : error ? (
-        <ErrorCard error={error} />
-      ) : (
-        <div className="grid grid-cols-3 gap-4">
-          {(filtered ?? []).map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-          {(filtered ?? []).length === 0 && (
-            <div className="col-span-3 py-16 text-center">
-              <p className="text-2xl mb-2">📦</p>
-              <p className="text-white/40 text-sm">No products found</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {data && <PaginationBar data={data} page={page} setPage={setPage} />}
-    </div>
-  )
-}
-
 // ─── Cards ────────────────────────────────────────────────────────────────────
 
 function UserCard({ user }: { user: User }) {
@@ -682,41 +480,6 @@ function UserCard({ user }: { user: User }) {
           ⋯
         </button>
       </div>
-    </div>
-  )
-}
-
-function ProductCard({ product }: { product: Product }) {
-  return (
-    <div className="group bg-[#111113] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-5 transition-all duration-200 flex flex-col">
-      {/* Product icon */}
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/20 flex items-center justify-center text-xl mb-4">
-        📦
-      </div>
-
-      <div className="flex-1">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <p className="text-sm font-semibold text-white truncate">{product.name}</p>
-          <StatusBadge active={product.status === 0} />
-        </div>
-        <p className="text-[12px] text-white/40 line-clamp-2">{product.description}</p>
-      </div>
-
-      <div className="mt-4 pt-4 border-t border-white/[0.06] flex items-center justify-between">
-        <span className="text-lg font-bold text-emerald-400 font-mono">
-          ${product.price.toFixed(2)}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-all border border-white/[0.06] text-sm">
-            ✎
-          </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-all border border-white/[0.06] text-sm">
-            ⋯
-          </button>
-        </div>
-      </div>
-
-      <p className="text-[11px] text-white/20 mt-2">Added {fmtDate(product.createdAt)}</p>
     </div>
   )
 }
