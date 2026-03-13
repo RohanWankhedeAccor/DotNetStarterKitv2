@@ -63,9 +63,6 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
 
     /// <inheritdoc />
-    public DbSet<Product> Products => Set<Product>();
-
-    /// <inheritdoc />
     public DbSet<Project> Projects => Set<Project>();
 
     /// <inheritdoc />

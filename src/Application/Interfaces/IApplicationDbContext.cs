@@ -24,9 +24,6 @@ public interface IApplicationDbContext
     /// <summary>Gets the <see cref="DbSet{UserRole}"/> for querying and persisting user-to-role assignments.</summary>
     DbSet<UserRole> UserRoles { get; }
 
-    /// <summary>Gets the <see cref="DbSet{Product}"/> for querying and persisting product records.</summary>
-    DbSet<Product> Products { get; }
-
     /// <summary>Gets the <see cref="DbSet{Project}"/> for querying and persisting project records.</summary>
     DbSet<Project> Projects { get; }
 

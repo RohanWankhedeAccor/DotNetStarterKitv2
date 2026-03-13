@@ -1,5 +1,4 @@
 using Api.Endpoints.Auth;
-using Api.Endpoints.Products;
 using Api.Endpoints.Users;
 using Api.Middleware;
 
@@ -78,11 +77,6 @@ public static class ApplicationBuilderExtensions
         app.MapCreateUser();
         app.MapGetUserById();
         app.MapGetUsers();
-
-        // Product endpoints
-        app.MapCreateProduct();
-        app.MapGetProductById();
-        app.MapGetProducts();
 
         // Health check endpoint
         app.MapHealthCheck();
