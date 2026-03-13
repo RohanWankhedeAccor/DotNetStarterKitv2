@@ -10,6 +10,8 @@ namespace Api.Endpoints.Products;
 /// </summary>
 public static class CreateProductEndpoint
 {
+    /// <summary>Registers the POST /api/v1/products endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapCreateProduct(this WebApplication app)
     {
         app.MapPost("/api/v1/products", CreateProduct)

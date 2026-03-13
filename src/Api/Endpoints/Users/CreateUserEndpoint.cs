@@ -10,6 +10,8 @@ namespace Api.Endpoints.Users;
 /// </summary>
 public static class CreateUserEndpoint
 {
+    /// <summary>Registers the POST /api/v1/users endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapCreateUser(this WebApplication app)
     {
         app.MapPost("/api/v1/users", CreateUser)

@@ -15,7 +15,7 @@ namespace Api.Middleware;
 /// - <see cref="Domain.Exceptions.AzureAdTokenValidationException"/> → 401 (Phase 12)
 /// - <see cref="ConflictException"/> → 409
 /// - <see cref="ForbiddenException"/> → 403
-/// - <see cref="ValidationException"/> → 400
+/// - <see cref="FluentValidation.ValidationException"/> → 400
 /// - All other exceptions → 500
 /// </summary>
 public sealed class ExceptionHandlerMiddleware
@@ -23,12 +23,17 @@ public sealed class ExceptionHandlerMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlerMiddleware> _logger;
 
+    /// <summary>Initializes a new instance of <see cref="ExceptionHandlerMiddleware"/>.</summary>
+    /// <param name="next">The next middleware delegate in the pipeline.</param>
+    /// <param name="logger">Logger for recording exception details.</param>
     public ExceptionHandlerMiddleware(RequestDelegate next, ILogger<ExceptionHandlerMiddleware> logger)
     {
         _next = next;
         _logger = logger;
     }
 
+    /// <summary>Executes the middleware, catching any unhandled exceptions and converting them to problem details responses.</summary>
+    /// <param name="context">The current HTTP context.</param>
     public async Task InvokeAsync(HttpContext context)
     {
         try

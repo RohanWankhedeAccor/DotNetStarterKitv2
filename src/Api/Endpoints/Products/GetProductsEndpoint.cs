@@ -11,6 +11,8 @@ namespace Api.Endpoints.Products;
 /// </summary>
 public static class GetProductsEndpoint
 {
+    /// <summary>Registers the GET /api/v1/products endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetProducts(this WebApplication app)
     {
         app.MapGet("/api/v1/products", GetProducts)

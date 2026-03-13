@@ -11,6 +11,8 @@ namespace Api.Endpoints.Users;
 /// </summary>
 public static class GetUsersEndpoint
 {
+    /// <summary>Registers the GET /api/v1/users endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetUsers(this WebApplication app)
     {
         app.MapGet("/api/v1/users", GetUsers)

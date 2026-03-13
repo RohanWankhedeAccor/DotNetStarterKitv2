@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
     /// Registers API services: Swagger/OpenAPI, JSON serialization settings, CORS, and versioning.
     /// </summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The application configuration for reading JWT and other settings.</param>
     /// <returns>The service collection for fluent chaining.</returns>
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
