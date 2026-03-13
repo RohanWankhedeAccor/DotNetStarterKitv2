@@ -10,6 +10,8 @@ namespace Api.Endpoints.Products;
 /// </summary>
 public static class GetProductByIdEndpoint
 {
+    /// <summary>Registers the GET /api/v1/products/{id} endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetProductById(this WebApplication app)
     {
         app.MapGet("/api/v1/products/{id:guid}", GetProductById)
@@ -18,7 +20,9 @@ public static class GetProductByIdEndpoint
             .WithSummary("Get a product by ID")
             .WithDescription("Retrieves a single product by its unique identifier.")
             .Produces<ProductDto>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetProductById(

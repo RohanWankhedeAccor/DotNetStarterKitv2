@@ -10,6 +10,8 @@ namespace Api.Endpoints.Products;
 /// </summary>
 public static class CreateProductEndpoint
 {
+    /// <summary>Registers the POST /api/v1/products endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapCreateProduct(this WebApplication app)
     {
         app.MapPost("/api/v1/products", CreateProduct)
@@ -18,7 +20,9 @@ public static class CreateProductEndpoint
             .WithSummary("Create a new product")
             .WithDescription("Creates a new product with the provided name, description, and price.")
             .Produces<ProductDto>(StatusCodes.Status201Created)
-            .Produces(StatusCodes.Status400BadRequest);
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> CreateProduct(

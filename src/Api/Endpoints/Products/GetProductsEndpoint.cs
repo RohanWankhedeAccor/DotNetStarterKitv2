@@ -11,6 +11,8 @@ namespace Api.Endpoints.Products;
 /// </summary>
 public static class GetProductsEndpoint
 {
+    /// <summary>Registers the GET /api/v1/products endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetProducts(this WebApplication app)
     {
         app.MapGet("/api/v1/products", GetProducts)
@@ -18,7 +20,9 @@ public static class GetProductsEndpoint
             .WithOpenApi()
             .WithSummary("Get all products (paginated)")
             .WithDescription("Retrieves a paginated list of products. PageSize is clamped to a maximum of 100.")
-            .Produces<PagedResponse<ProductDto>>(StatusCodes.Status200OK);
+            .Produces<PagedResponse<ProductDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetProducts(

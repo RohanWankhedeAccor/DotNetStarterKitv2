@@ -1,3 +1,13 @@
+## Target Branch
+
+> **Where does this PR merge into?**
+> - `develop` — for all feature, fix, refactor, docs, chore, and test branches
+> - `main` — **only** for release PRs (`develop → main`) or hotfixes (`hotfix/* → main`)
+>
+> If you're targeting `main` directly with feature work, stop and retarget to `develop`.
+
+---
+
 ## Description
 
 <!-- Describe what this PR does and why -->

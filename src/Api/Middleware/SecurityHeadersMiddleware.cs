@@ -14,11 +14,15 @@ public sealed class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
 
+    /// <summary>Initializes a new instance of <see cref="SecurityHeadersMiddleware"/>.</summary>
+    /// <param name="next">The next middleware delegate in the pipeline.</param>
     public SecurityHeadersMiddleware(RequestDelegate next)
     {
         _next = next;
     }
 
+    /// <summary>Adds security headers to the response and invokes the next middleware.</summary>
+    /// <param name="context">The current HTTP context.</param>
     public async Task InvokeAsync(HttpContext context)
     {
         // Strict-Transport-Security: enforce HTTPS for 1 year (31536000 seconds)

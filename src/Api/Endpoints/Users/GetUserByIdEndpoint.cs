@@ -10,6 +10,8 @@ namespace Api.Endpoints.Users;
 /// </summary>
 public static class GetUserByIdEndpoint
 {
+    /// <summary>Registers the GET /api/v1/users/{id} endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetUserById(this WebApplication app)
     {
         app.MapGet("/api/v1/users/{id:guid}", GetUserById)
@@ -18,7 +20,9 @@ public static class GetUserByIdEndpoint
             .WithSummary("Get a user by ID")
             .WithDescription("Retrieves a single user by their unique identifier.")
             .Produces<UserDto>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetUserById(

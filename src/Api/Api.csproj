@@ -9,6 +9,12 @@
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
   </PropertyGroup>
 
+  <!-- Suppress missing XML doc warnings in Debug (dotnet run) to keep output clean.
+       Release/CI retains them so documentation gaps stay visible. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Asp.Versioning.Http" Version="8.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />

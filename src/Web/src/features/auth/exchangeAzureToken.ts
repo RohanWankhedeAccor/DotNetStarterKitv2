@@ -7,13 +7,12 @@ interface AzureLoginResponse {
   email: string
   fullName: string
   roles: string[]
-  token: string
   expiresIn: number
 }
 
 /**
- * Exchanges an Azure AD ID token for an internal JWT.
- * Dispatches setUser to Redux on success.
+ * Exchanges an Azure AD access token for an internal JWT (set as HttpOnly cookie by the server).
+ * Dispatches setUser to Redux with user info (not the token — it's in the cookie).
  * Shared by useAzureLogin (manual popup) and useSilentSso (auto on load).
  */
 export async function exchangeAzureToken(
@@ -30,8 +29,8 @@ export async function exchangeAzureToken(
       email: data.email,
       fullName: data.fullName,
       roles: data.roles,
-      token: data.token,
       expiresIn: data.expiresIn,
+      tokenExpiresAt: Date.now() + data.expiresIn * 1000,
       authSource: 'AzureAd',
     }),
   )

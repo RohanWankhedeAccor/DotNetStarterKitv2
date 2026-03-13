@@ -11,7 +11,7 @@ export default function UsersPage() {
     return (
       <div className="text-center py-8">
         <p className="text-destructive font-medium">Error loading users</p>
-        <p className="text-sm text-muted-foreground">{(error as any)?.message}</p>
+        <p className="text-sm text-muted-foreground">{(error as Error)?.message}</p>
       </div>
     )
   }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
 import { apiClient } from './lib/api-client'
 import { UserProfileMenu } from './features/auth/components/UserProfileMenu'
 import { AzureLoginButton } from './features/auth/components/AzureLoginButton'
@@ -387,8 +388,9 @@ function UsersView({ search }: { search: string }) {
       await createUser.mutateAsync(form)
       setForm({ email: '', fullName: '', password: '' })
       setShowForm(false)
-    } catch (err: any) {
-      setFormError(err.response?.data?.detail || err.message || 'Failed to create user')
+    } catch (err) {
+      const e = err as AxiosError<{ detail?: string }>
+      setFormError(e.response?.data?.detail || e.message || 'Failed to create user')
     }
   }
 
@@ -525,8 +527,9 @@ function ProductsView({ search }: { search: string }) {
       await createProduct.mutateAsync({ ...form, price: parseFloat(form.price) })
       setForm({ name: '', description: '', price: '' })
       setShowForm(false)
-    } catch (err: any) {
-      setFormError(err.response?.data?.detail || err.message || 'Failed to create product')
+    } catch (err) {
+      const e = err as AxiosError<{ detail?: string }>
+      setFormError(e.response?.data?.detail || e.message || 'Failed to create product')
     }
   }
 
@@ -763,7 +766,7 @@ function ErrorCard({ error }: { error: unknown }) {
       <p className="text-3xl mb-3">⚠️</p>
       <p className="text-sm font-semibold text-red-400 mb-1">Could not load data</p>
       <p className="text-xs text-white/30 text-center max-w-xs">
-        {(error as any)?.message ?? 'Make sure the API is running on https://localhost:5001'}
+        {(error as Error)?.message ?? 'Make sure the API is running on https://localhost:5001'}
       </p>
     </div>
   )
@@ -774,7 +777,7 @@ function PaginationBar({
   page,
   setPage,
 }: {
-  data: PagedResponse<any>
+  data: PagedResponse<unknown>
   page: number
   setPage: (p: number) => void
 }) {

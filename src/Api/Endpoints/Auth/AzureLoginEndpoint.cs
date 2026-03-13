@@ -34,6 +34,7 @@ internal static class AzureLoginEndpoint
     private static async Task<IResult> AzureLogin(
         AzureLoginRequest request,
         IMediator mediator,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.AzureAdToken))
@@ -43,7 +44,8 @@ internal static class AzureLoginEndpoint
 
         var command = new AzureLoginCommand(request.AzureAdToken);
         var response = await mediator.Send(command, cancellationToken);
-        return Results.Ok(response);
+        LoginEndpoint.SetAuthCookie(httpContext, response.Token, response.ExpiresIn);
+        return Results.Ok(LoginEndpoint.ToUserInfo(response));
     }
 }
 

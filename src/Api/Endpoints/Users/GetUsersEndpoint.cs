@@ -11,6 +11,8 @@ namespace Api.Endpoints.Users;
 /// </summary>
 public static class GetUsersEndpoint
 {
+    /// <summary>Registers the GET /api/v1/users endpoint on the application.</summary>
+    /// <param name="app">The web application to register the endpoint on.</param>
     public static void MapGetUsers(this WebApplication app)
     {
         app.MapGet("/api/v1/users", GetUsers)
@@ -18,7 +20,9 @@ public static class GetUsersEndpoint
             .WithOpenApi()
             .WithSummary("Get all users (paginated)")
             .WithDescription("Retrieves a paginated list of users. PageSize is clamped to a maximum of 100.")
-            .Produces<PagedResponse<UserDto>>(StatusCodes.Status200OK);
+            .Produces<PagedResponse<UserDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> GetUsers(
