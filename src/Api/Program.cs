@@ -1,6 +1,8 @@
 using Application;
 using Api.Extensions;
+using Application.Interfaces;
 using Infrastructure.DependencyInjection;
+using Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,20 +25,32 @@ builder.Services.AddApiServices(builder.Configuration);
 var app = builder.Build();
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 2. CONFIGURE MIDDLEWARE PIPELINE
+// 2. SEED DATABASE (runs only when tables are empty)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await DataSeeder.SeedAsync(db, hasher, logger);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3. CONFIGURE MIDDLEWARE PIPELINE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Configure middleware in the correct order
 app.UseApiMiddleware();
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 3. MAP API ENDPOINTS
+// 4. MAP API ENDPOINTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 app.MapApiEndpoints();
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 4. RUN THE APPLICATION
+// 5. RUN THE APPLICATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 app.Run();
