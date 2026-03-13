@@ -95,13 +95,11 @@ public static class InfrastructureServiceExtensions
         // reused if the project later migrates to AddMicrosoftIdentityWebApi.
         var azureAdTenantId = configuration["AzureAd:TenantId"];
         var azureAdApiClientId = configuration["AzureAd:ClientId"];
-        var azureAdSpaClientId = configuration["AzureAd:SpaClientId"];
 
-        if (!string.IsNullOrEmpty(azureAdTenantId) && !string.IsNullOrEmpty(azureAdApiClientId)
-            && !string.IsNullOrEmpty(azureAdSpaClientId))
+        if (!string.IsNullOrEmpty(azureAdTenantId) && !string.IsNullOrEmpty(azureAdApiClientId))
         {
             services.AddSingleton<IAzureAdTokenValidator>(
-                new AzureAdTokenValidator(azureAdTenantId, azureAdApiClientId, azureAdSpaClientId));
+                new AzureAdTokenValidator(azureAdTenantId, azureAdApiClientId));
         }
 
         return services;

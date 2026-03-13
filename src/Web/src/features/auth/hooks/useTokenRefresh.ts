@@ -1,27 +1,26 @@
 import { useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useMsal } from '@azure/msal-react'
 import { selectIsAuthenticated, selectUser } from '../../../lib/redux/store'
-import { apiScopes } from '../../../lib/msalConfig'
-import { exchangeAzureToken } from '../exchangeAzureToken'
+import { refreshToken } from '../../../lib/redux/authSlice'
+import apiClient from '../../../lib/api-client'
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000  // refresh when < 5 min remaining
 const CHECK_INTERVAL_MS = 60 * 1000       // check every 60 s
 
 /**
- * Proactively refreshes the internal JWT before it expires.
+ * Proactively rotates the HttpOnly auth cookie before the JWT expires.
  *
  * Flow:
  * 1. Every 60 s, compare Date.now() against tokenExpiresAt minus a 5-min buffer.
- * 2. If within the buffer, call MSAL acquireTokenSilent for a fresh Azure AD token.
- * 3. Exchange it via the backend for a fresh internal JWT.
- * 4. Redux auth state is updated — api-client interceptor picks up the new token automatically.
+ * 2. If within the buffer, POST /api/v1/auth/refresh (cookie sent automatically).
+ * 3. Backend validates existing cookie, issues new one, returns new expiry.
+ * 4. Redux tokenExpiresAt updated so the next interval check uses the fresh expiry.
  *
+ * Works for both local and Azure AD authenticated users — no MSAL dependency.
  * Mounted once in AppInitializer for the lifetime of the session.
  */
 export const useTokenRefresh = () => {
   const dispatch = useDispatch()
-  const { instance, accounts } = useMsal()
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const user = useSelector(selectUser)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -34,19 +33,14 @@ export const useTokenRefresh = () => {
       if (timeUntilExpiry > REFRESH_BUFFER_MS) return
 
       try {
-        const account = accounts[0]
-        if (!account) return
-
-        const tokenResponse = await instance.acquireTokenSilent({
-          scopes: apiScopes,
-          account,
-        })
-
-        await exchangeAzureToken(tokenResponse.idToken, dispatch)
-        console.log('[TokenRefresh] Token refreshed proactively')
+        const { data } = await apiClient.post<{ expiresIn: number; tokenExpiresAt: number }>(
+          '/api/v1/auth/refresh',
+        )
+        dispatch(refreshToken({ expiresIn: data.expiresIn, tokenExpiresAt: data.tokenExpiresAt }))
+        console.log('[TokenRefresh] Cookie rotated proactively')
       } catch (error) {
-        // Silent refresh unavailable — next 401 from the API will prompt re-login.
-        console.warn('[TokenRefresh] Silent refresh failed:', error)
+        // Refresh failed — user will get 401 on next API call and can re-login.
+        console.warn('[TokenRefresh] Cookie rotation failed:', error)
       }
     }
 
@@ -55,5 +49,5 @@ export const useTokenRefresh = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [isAuthenticated, user.tokenExpiresAt, instance, accounts, dispatch])
+  }, [isAuthenticated, user.tokenExpiresAt, dispatch])
 }

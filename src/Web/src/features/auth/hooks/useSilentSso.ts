@@ -52,7 +52,7 @@ export const useSilentSso = () => {
           ? await instance.acquireTokenSilent({ scopes: apiScopes, account: accounts[0] })
           : await instance.ssoSilent({ scopes: apiScopes });
 
-        const data = await exchangeAzureToken(tokenResponse.idToken, dispatch);
+        const data = await exchangeAzureToken(tokenResponse.accessToken, dispatch);
         console.log(`[SSO] Silent login successful for ${data.email}`);
       } catch (error) {
         // Expected when no Azure AD session exists — user can log in manually.
