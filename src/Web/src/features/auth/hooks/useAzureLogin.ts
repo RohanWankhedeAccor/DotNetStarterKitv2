@@ -47,7 +47,7 @@ export const useAzureLogin = () => {
       const loginResponseData = await exchangeAzureToken(azureAdToken, dispatch);
 
       toast.success(
-        `Welcome, ${loginResponseData.fullName}! You're now logged in with Azure AD.`
+        `Welcome, ${loginResponseData.firstName}! You're now logged in with Azure AD.`
       );
 
       return true;

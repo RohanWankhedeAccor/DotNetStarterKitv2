@@ -10,7 +10,8 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 export interface AuthUser {
   userId: string | null;
   email: string | null;
-  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
   roles: string[];
   expiresIn: number;
   /** Unix ms timestamp of when the internal JWT expires. Used by useTokenRefresh for proactive cookie rotation. */
@@ -28,7 +29,8 @@ const initialState: AuthState = {
   user: {
     userId: null,
     email: null,
-    fullName: null,
+    firstName: null,
+    lastName: null,
     roles: [],
     expiresIn: 0,
     tokenExpiresAt: 0,

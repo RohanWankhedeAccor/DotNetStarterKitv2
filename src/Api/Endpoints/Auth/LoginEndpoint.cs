@@ -59,7 +59,8 @@ public static class LoginEndpoint
     {
         UserId = r.UserId,
         Email = r.Email,
-        FullName = r.FullName,
+        FirstName = r.FirstName,
+        LastName = r.LastName,
         Roles = r.Roles,
         ExpiresIn = r.ExpiresIn,
     };
@@ -80,8 +81,11 @@ public class UserInfoResponse
     /// <summary>Gets or sets the user's email address.</summary>
     public required string Email { get; set; }
 
-    /// <summary>Gets or sets the user's full name.</summary>
-    public required string FullName { get; set; }
+    /// <summary>Gets or sets the user's first name.</summary>
+    public required string FirstName { get; set; }
+
+    /// <summary>Gets or sets the user's last name.</summary>
+    public required string LastName { get; set; }
 
     /// <summary>Gets or sets the roles assigned to the user.</summary>
     public required IEnumerable<string> Roles { get; set; }

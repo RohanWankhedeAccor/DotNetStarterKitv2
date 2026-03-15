@@ -22,7 +22,9 @@ public class AzureLoginCommandHandlerTests
     {
         _handler = new AzureLoginCommandHandler(_context, _validator, _tokenService, _currentUser);
         _tokenService.ExpirationMinutes.Returns(60);
-        _tokenService.GenerateToken(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IEnumerable<string>>())
+        _tokenService.GenerateToken(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns("test.azure.jwt");
     }
 
@@ -45,7 +47,7 @@ public class AzureLoginCommandHandlerTests
     public async Task Handle_WithExistingUser_UpdatesDisplayNameAndReturnsToken()
     {
         SetupValidatorReturns("oid-123", "azure@example.com", "Updated Name");
-        var existing = new User("azure@example.com", "Old Name", null);
+        var existing = new User("azure@example.com", "Old", "Name", null);
         existing.ProvisionAzureAd("oid-123");
         existing.Activate();
         var usersSet = DbSetMockHelper.Create([existing]);
@@ -55,7 +57,8 @@ public class AzureLoginCommandHandlerTests
         var result = await _handler.Handle(new AzureLoginCommand("valid.token"), default);
 
         result.Token.Should().Be("test.azure.jwt");
-        existing.FullName.Should().Be("Updated Name");
+        existing.FirstName.Should().Be("Updated");
+        existing.LastName.Should().Be("Name");
     }
 
     [Fact]

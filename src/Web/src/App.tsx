@@ -5,16 +5,18 @@ import type { AxiosError } from 'axios'
 import { apiClient } from './lib/api-client'
 import { UserProfileMenu } from './features/auth/components/UserProfileMenu'
 import { AzureLoginButton } from './features/auth/components/AzureLoginButton'
-import { selectIsAuthenticated, selectAuth } from './lib/redux/store'
+import { selectIsAuthenticated, selectAuth, selectUserRoles } from './lib/redux/store'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface User {
-  id: number
+  id: string
   email: string
-  fullName: string
+  firstName: string
+  lastName: string
   status: number
   createdAt: string
+  roles: string[]
 }
 
 interface PagedResponse<T> {
@@ -28,19 +30,29 @@ interface PagedResponse<T> {
 
 // ─── API Hooks ─────────────────────────────────────────────────────────────────
 
-function useUsers(page = 1) {
+function useUsers(page = 1, enabled = true) {
   return useQuery<PagedResponse<User>>({
     queryKey: ['users', page],
     queryFn: () =>
       apiClient.get(`/api/v1/users?pageNumber=${page}&pageSize=8`).then((r) => r.data),
+    enabled,
   })
 }
 
 function useCreateUser() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { email: string; fullName: string; password: string }) =>
+    mutationFn: (data: { email: string; firstName: string; lastName: string; password: string }) =>
       apiClient.post('/api/v1/users', data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  })
+}
+
+function useAssignRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, roleName }: { userId: string; roleName: string }) =>
+      apiClient.post(`/api/v1/users/${userId}/roles`, { roleName }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   })
 }
@@ -59,6 +71,7 @@ const NAV_ITEMS: { id: View; label: string; icon: string }[] = [
 export default function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const { isLoading: isSsoLoading } = useSelector(selectAuth)
+  const myRoles = useSelector(selectUserRoles)
   const [view, setView] = useState<View>('dashboard')
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -185,7 +198,7 @@ export default function App() {
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-6">
           {view === 'dashboard' && <DashboardView setView={setView} />}
-          {view === 'users' && <UsersView search={search} />}
+          {view === 'users' && <UsersView search={search} myRoles={myRoles} />}
         </main>
       </div>
     </div>
@@ -195,7 +208,8 @@ export default function App() {
 // ─── Dashboard View ────────────────────────────────────────────────────────────
 
 function DashboardView({ setView }: { setView: (v: View) => void }) {
-  const { data: users } = useUsers(1)
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+  const { data: users } = useUsers(1, isAuthenticated)
 
   const stats = [
     {
@@ -276,10 +290,10 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
           {users?.items.slice(0, 4).map((u) => (
             <div key={u.id} className="flex items-center gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {u.fullName.charAt(0).toUpperCase()}
+                {u.firstName.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-white truncate">{u.fullName}</p>
+                <p className="text-sm font-medium text-white truncate">{u.firstName} {u.lastName}</p>
                 <p className="text-[11px] text-white/40 truncate">{u.email}</p>
               </div>
               <StatusDot active={u.status === 0} />
@@ -293,18 +307,22 @@ function DashboardView({ setView }: { setView: (v: View) => void }) {
 
 // ─── Users View ───────────────────────────────────────────────────────────────
 
-function UsersView({ search }: { search: string }) {
+function UsersView({ search, myRoles }: { search: string; myRoles: string[] }) {
+  const isAuthenticated = useSelector(selectIsAuthenticated)
   const [page, setPage] = useState(1)
   const [showForm, setShowForm] = useState(false)
-  const { data, isLoading, error } = useUsers(page)
+  const { data, isLoading, error } = useUsers(page, isAuthenticated)
   const createUser = useCreateUser()
-  const [form, setForm] = useState({ email: '', fullName: '', password: '' })
+  const [form, setForm] = useState({ email: '', firstName: '', lastName: '', password: '' })
   const [formError, setFormError] = useState('')
+
+  const canCreate = myRoles.includes('Administrator') || myRoles.includes('Editor')
+  const canAssign = myRoles.includes('Administrator')
 
   const filtered = data?.items.filter(
     (u) =>
       !search ||
-      u.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      `${u.firstName} ${u.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase())
   )
 
@@ -313,7 +331,7 @@ function UsersView({ search }: { search: string }) {
     setFormError('')
     try {
       await createUser.mutateAsync(form)
-      setForm({ email: '', fullName: '', password: '' })
+      setForm({ email: '', firstName: '', lastName: '', password: '' })
       setShowForm(false)
     } catch (err) {
       const e = err as AxiosError<{ detail?: string }>
@@ -331,13 +349,15 @@ function UsersView({ search }: { search: string }) {
             {data ? `${data.totalCount} registered accounts` : 'Loading...'}
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
-        >
-          <span className="text-base leading-none">+</span>
-          New User
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
+          >
+            <span className="text-base leading-none">+</span>
+            New User
+          </button>
+        )}
       </div>
 
       {/* Create form */}
@@ -350,7 +370,7 @@ function UsersView({ search }: { search: string }) {
               {formError}
             </div>
           )}
-          <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-3">
+          <form onSubmit={handleSubmit} className="grid grid-cols-4 gap-3">
             <input
               required
               type="email"
@@ -361,9 +381,16 @@ function UsersView({ search }: { search: string }) {
             />
             <input
               required
-              placeholder="Full name"
-              value={form.fullName}
-              onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
+              placeholder="First name"
+              value={form.firstName}
+              onChange={(e) => setForm((p) => ({ ...p, firstName: e.target.value }))}
+              className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] text-white transition-all"
+            />
+            <input
+              required
+              placeholder="Last name"
+              value={form.lastName}
+              onChange={(e) => setForm((p) => ({ ...p, lastName: e.target.value }))}
               className="bg-white/[0.05] border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm placeholder:text-white/25 focus:outline-none focus:border-indigo-500/60 focus:bg-white/[0.07] text-white transition-all"
             />
             <input
@@ -414,7 +441,7 @@ function UsersView({ search }: { search: string }) {
       ) : (
         <div className="grid grid-cols-2 gap-4">
           {(filtered ?? []).map((u) => (
-            <UserCard key={u.id} user={u} />
+            <UserCard key={u.id} user={u} canAssign={canAssign} />
           ))}
           {(filtered ?? []).length === 0 && (
             <div className="col-span-2 py-16 text-center">
@@ -432,8 +459,18 @@ function UsersView({ search }: { search: string }) {
 
 // ─── Cards ────────────────────────────────────────────────────────────────────
 
-function UserCard({ user }: { user: User }) {
-  const initials = user.fullName
+const ROLE_COLORS: Record<string, string> = {
+  Administrator: 'bg-violet-500/15 text-violet-300 border-violet-500/25',
+  Editor:        'bg-indigo-500/15 text-indigo-300 border-indigo-500/25',
+  Viewer:        'bg-slate-500/15 text-slate-300 border-slate-500/25',
+}
+
+function UserCard({ user, canAssign }: { user: User; canAssign: boolean }) {
+  const [showAssign, setShowAssign] = useState(false)
+  const [selectedRole, setSelectedRole] = useState('Editor')
+  const assignRole = useAssignRole()
+
+  const initials = `${user.firstName} ${user.lastName}`
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -448,7 +485,18 @@ function UserCard({ user }: { user: User }) {
     'from-cyan-500 to-blue-600',
     'from-purple-500 to-pink-600',
   ]
-  const gradient = gradients[user.id % gradients.length]
+  // Use a consistent gradient derived from the email string
+  const gradientIdx = user.email.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  const gradient = gradients[gradientIdx % gradients.length]
+
+  const handleAssign = async () => {
+    try {
+      await assignRole.mutateAsync({ userId: user.id, roleName: selectedRole })
+      setShowAssign(false)
+    } catch {
+      // errors surface via the query invalidation / toast layer
+    }
+  }
 
   return (
     <div className="group bg-[#111113] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-5 transition-all duration-200">
@@ -460,24 +508,70 @@ function UserCard({ user }: { user: User }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-white truncate">{user.fullName}</p>
-            <StatusBadge active={user.status === 0} />
+            <p className="text-sm font-semibold text-white truncate">{user.firstName} {user.lastName}</p>
+            <StatusBadge active={user.status === 1} />
           </div>
           <p className="text-[12px] text-white/40 mt-0.5 truncate">{user.email}</p>
+          {/* Role badges */}
+          {user.roles.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {user.roles.map((role) => (
+                <span
+                  key={role}
+                  className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${ROLE_COLORS[role] ?? 'bg-white/[0.05] text-white/40 border-white/[0.08]'}`}
+                >
+                  {role}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="text-[11px] text-white/25 mt-2">Joined {fmtDate(user.createdAt)}</p>
         </div>
       </div>
+
+      {/* Assign role inline panel (Admin only) */}
+      {canAssign && showAssign && (
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+            className="flex-1 bg-white/[0.05] border border-white/[0.08] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500/60"
+          >
+            <option value="Administrator">Administrator</option>
+            <option value="Editor">Editor</option>
+            <option value="Viewer">Viewer</option>
+          </select>
+          <button
+            onClick={handleAssign}
+            disabled={assignRole.isPending}
+            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            {assignRole.isPending ? '…' : 'Assign'}
+          </button>
+          <button
+            onClick={() => setShowAssign(false)}
+            className="px-3 py-1.5 text-white/40 hover:text-white text-xs rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* Action row */}
       <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.06]">
         <button className="flex-1 py-2 rounded-lg text-xs font-medium bg-white/[0.04] hover:bg-indigo-600/20 hover:text-indigo-400 text-white/50 transition-all border border-white/[0.06] hover:border-indigo-500/30">
           View Profile
         </button>
+        {canAssign && (
+          <button
+            onClick={() => setShowAssign(!showAssign)}
+            className="px-3 py-2 rounded-lg text-xs font-medium bg-white/[0.04] hover:bg-violet-600/20 hover:text-violet-400 text-white/50 transition-all border border-white/[0.06] hover:border-violet-500/30"
+          >
+            Assign Role
+          </button>
+        )}
         <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-all border border-white/[0.06] text-sm">
           ✉
-        </button>
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/30 hover:text-white/60 transition-all border border-white/[0.06] text-sm">
-          ⋯
         </button>
       </div>
     </div>

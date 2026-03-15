@@ -19,7 +19,9 @@ public class LoginCommandHandlerTests
     {
         _handler = new LoginCommandHandler(_context, _passwordHasher, _tokenService);
         _tokenService.ExpirationMinutes.Returns(60);
-        _tokenService.GenerateToken(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IEnumerable<string>>())
+        _tokenService.GenerateToken(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns("test.jwt.token");
     }
 
@@ -79,7 +81,7 @@ public class LoginCommandHandlerTests
 
     private static User CreateActiveUser(string email, string passwordHash)
     {
-        var user = new User(email, "Test User", passwordHash);
+        var user = new User(email, "Test", "User", passwordHash);
         user.Activate();
         return user;
     }

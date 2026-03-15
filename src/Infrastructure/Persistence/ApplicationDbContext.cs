@@ -66,6 +66,12 @@ public sealed class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Project> Projects => Set<Project>();
 
     /// <inheritdoc />
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    /// <inheritdoc />
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    /// <inheritdoc />
     /// <remarks>
     /// Before delegating to the base EF Core implementation, this override iterates
     /// the EF Core ChangeTracker entries of type <see cref="BaseEntity"/> and

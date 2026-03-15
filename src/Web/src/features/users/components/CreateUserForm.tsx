@@ -6,7 +6,8 @@ import { useCreateUser } from '../hooks/useUsers'
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
@@ -60,13 +61,23 @@ export default function CreateUserForm({ onSuccess }: CreateUserFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Full Name</label>
+          <label className="block text-sm font-medium mb-1">First Name</label>
           <input
-            {...register('fullName')}
-            placeholder="John Doe"
+            {...register('firstName')}
+            placeholder="John"
             className="w-full px-3 py-2 border border-input rounded focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          {errors.fullName && <p className="text-sm text-destructive mt-1">{errors.fullName.message}</p>}
+          {errors.firstName && <p className="text-sm text-destructive mt-1">{errors.firstName.message}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Last Name</label>
+          <input
+            {...register('lastName')}
+            placeholder="Doe"
+            className="w-full px-3 py-2 border border-input rounded focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.lastName && <p className="text-sm text-destructive mt-1">{errors.lastName.message}</p>}
         </div>
 
         <div>

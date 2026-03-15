@@ -27,10 +27,13 @@ public static class RefreshEndpoint
         var user = httpContext.User;
         var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var email = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
-        var fullName = user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+        var nameClaim = (user.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty).Split(' ', 2);
+        var firstName = nameClaim.Length > 0 ? nameClaim[0] : string.Empty;
+        var lastName  = nameClaim.Length > 1 ? nameClaim[1] : string.Empty;
         var roles = user.FindAll(ClaimTypes.Role).Select(c => c.Value);
+        var permissions = user.FindAll("permission").Select(c => c.Value);
 
-        var newToken = tokenService.GenerateToken(userId, email, fullName, roles);
+        var newToken = tokenService.GenerateToken(userId, email, firstName, lastName, roles, permissions);
         var expiresIn = tokenService.ExpirationMinutes * 60;
 
         LoginEndpoint.SetAuthCookie(httpContext, newToken, expiresIn);

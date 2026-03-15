@@ -23,7 +23,8 @@ public static class CreateUserEndpoint
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status401Unauthorized)
-            .RequireAuthorization();
+            .Produces(StatusCodes.Status403Forbidden)
+            .RequireAuthorization("CanCreateUser");
     }
 
     private static async Task<IResult> CreateUser(
@@ -35,7 +36,8 @@ public static class CreateUserEndpoint
         var command = new CreateUserCommand
         {
             Email = request.Email,
-            FullName = request.FullName,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
             Password = request.Password
         };
 

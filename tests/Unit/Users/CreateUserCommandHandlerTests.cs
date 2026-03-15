@@ -23,7 +23,8 @@ public class CreateUserCommandHandlerTests
             cfg.CreateMap<User, UserDto>()
                .ForMember(d => d.Id, o => o.MapFrom(s => s.Id))
                .ForMember(d => d.Email, o => o.MapFrom(s => s.Email))
-               .ForMember(d => d.FullName, o => o.MapFrom(s => s.FullName)));
+               .ForMember(d => d.FirstName, o => o.MapFrom(s => s.FirstName))
+               .ForMember(d => d.LastName, o => o.MapFrom(s => s.LastName)));
         _mapper = config.CreateMapper();
 
         _passwordHasher.HashPassword(Arg.Any<string>()).Returns("hashed_password");
@@ -39,11 +40,12 @@ public class CreateUserCommandHandlerTests
         _context.Users.Returns(usersSet);
 
         var result = await _handler.Handle(
-            new CreateUserCommand { Email = "new@example.com", FullName = "New User", Password = "password123" },
+            new CreateUserCommand { Email = "new@example.com", FirstName = "New", LastName = "User", Password = "password123" },
             default);
 
         result.Email.Should().Be("new@example.com");
-        result.FullName.Should().Be("New User");
+        result.FirstName.Should().Be("New");
+        result.LastName.Should().Be("User");
         _context.Users.Received(1).Add(Arg.Any<User>());
         await _context.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -51,12 +53,12 @@ public class CreateUserCommandHandlerTests
     [Fact]
     public async Task Handle_WithDuplicateEmail_ThrowsConflictException()
     {
-        var existing = new User("taken@example.com", "Existing", "hash");
+        var existing = new User("taken@example.com", "Existing", "User", "hash");
         var usersSet = DbSetMockHelper.Create([existing]);
         _context.Users.Returns(usersSet);
 
         var act = () => _handler.Handle(
-            new CreateUserCommand { Email = "taken@example.com", FullName = "Dupe", Password = "password123" },
+            new CreateUserCommand { Email = "taken@example.com", FirstName = "Dupe", LastName = "User", Password = "password123" },
             default);
 
         await act.Should().ThrowAsync<ConflictException>()
@@ -70,7 +72,7 @@ public class CreateUserCommandHandlerTests
         _context.Users.Returns(usersSet);
 
         await _handler.Handle(
-            new CreateUserCommand { Email = "hash@example.com", FullName = "Hashed", Password = "plaintext" },
+            new CreateUserCommand { Email = "hash@example.com", FirstName = "Hashed", LastName = "User", Password = "plaintext" },
             default);
 
         _passwordHasher.Received(1).HashPassword("plaintext");

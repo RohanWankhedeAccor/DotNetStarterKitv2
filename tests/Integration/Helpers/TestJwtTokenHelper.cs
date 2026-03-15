@@ -14,7 +14,9 @@ public static class TestJwtTokenHelper
     public static string GenerateToken(
         string userId = "00000000-0000-0000-0000-000000000001",
         string email = "testuser@example.com",
-        string fullName = "Test User",
-        IEnumerable<string>? roles = null) =>
-        _service.GenerateToken(userId, email, fullName, roles ?? []);
+        string firstName = "Test",
+        string lastName = "User",
+        IEnumerable<string>? roles = null,
+        IEnumerable<string>? permissions = null) =>
+        _service.GenerateToken(userId, email, firstName, lastName, roles ?? [], permissions ?? []);
 }
