@@ -1,6 +1,7 @@
 using Api.Endpoints.Auth;
 using Api.Endpoints.Users;
 using Api.Middleware;
+using Serilog;
 
 namespace Api.Extensions;
 
@@ -26,6 +27,14 @@ public static class ApplicationBuilderExtensions
 
         // Global exception handler (must be first)
         app.UseMiddleware<ExceptionHandlerMiddleware>();
+
+        // Structured HTTP request/response logging via Serilog.
+        // Placed after ExceptionHandlerMiddleware so it sees the final status code,
+        // but before everything else so all requests are captured.
+        app.UseSerilogRequestLogging(opts =>
+        {
+            opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms";
+        });
 
         // HTTPS redirection (enforce HTTPS in production)
         if (!app.Environment.IsDevelopment())
