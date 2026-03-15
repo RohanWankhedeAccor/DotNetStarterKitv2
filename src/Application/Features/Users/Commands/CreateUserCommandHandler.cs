@@ -52,7 +52,8 @@ public sealed class CreateUserCommandHandler : IRequestHandler<CreateUserCommand
         var passwordHash = _passwordHasher.HashPassword(request.Password);
         var user = new User(
             email: request.Email,
-            fullName: request.FullName,
+            firstName: request.FirstName,
+            lastName: request.LastName,
             passwordHash: passwordHash);
 
         // Activate the user for demo purposes. In production, email confirmation would be required.

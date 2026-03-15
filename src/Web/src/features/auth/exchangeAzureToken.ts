@@ -5,7 +5,8 @@ import { setUser } from '../../lib/redux/authSlice'
 interface AzureLoginResponse {
   userId: string
   email: string
-  fullName: string
+  firstName: string
+  lastName: string
   roles: string[]
   expiresIn: number
 }
@@ -27,7 +28,8 @@ export async function exchangeAzureToken(
     setUser({
       userId: data.userId,
       email: data.email,
-      fullName: data.fullName,
+      firstName: data.firstName,
+      lastName: data.lastName,
       roles: data.roles,
       expiresIn: data.expiresIn,
       tokenExpiresAt: Date.now() + data.expiresIn * 1000,

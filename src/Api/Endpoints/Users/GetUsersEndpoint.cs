@@ -22,7 +22,8 @@ public static class GetUsersEndpoint
             .WithDescription("Retrieves a paginated list of users. PageSize is clamped to a maximum of 100.")
             .Produces<PagedResponse<UserDto>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
-            .RequireAuthorization();
+            .Produces(StatusCodes.Status403Forbidden)
+            .RequireAuthorization("CanViewUsers");
     }
 
     private static async Task<IResult> GetUsers(

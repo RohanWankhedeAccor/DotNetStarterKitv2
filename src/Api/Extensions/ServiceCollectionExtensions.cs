@@ -64,7 +64,17 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            // Claim-based policies keyed on the "permission" claim embedded in the JWT.
+            // Endpoints use these policy names — not role names — so the authorization
+            // contract is decoupled from the role catalogue.
+            options.AddPolicy("CanViewUsers",   p => p.RequireClaim("permission", "users.view"));
+            options.AddPolicy("CanCreateUser",  p => p.RequireClaim("permission", "users.create"));
+            options.AddPolicy("CanDeleteUser",  p => p.RequireClaim("permission", "users.delete"));
+            options.AddPolicy("CanAssignRoles", p => p.RequireClaim("permission", "roles.assign"));
+            options.AddPolicy("CanViewRoles",   p => p.RequireClaim("permission", "roles.view"));
+        });
 
         // Configure Swagger/OpenAPI documentation
         services.AddSwaggerGen(options =>

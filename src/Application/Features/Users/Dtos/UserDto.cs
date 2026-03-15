@@ -14,8 +14,14 @@ public class UserDto
     /// <summary>Gets or sets the user's email address.</summary>
     public required string Email { get; set; }
 
-    /// <summary>Gets or sets the user's full name.</summary>
-    public required string FullName { get; set; }
+    /// <summary>Gets or sets the user's unique username (handle). Null if not set.</summary>
+    public string? Username { get; set; }
+
+    /// <summary>Gets or sets the user's first name.</summary>
+    public required string FirstName { get; set; }
+
+    /// <summary>Gets or sets the user's last name.</summary>
+    public required string LastName { get; set; }
 
     /// <summary>Gets or sets the user's current status.</summary>
     public required UserStatus Status { get; set; }
@@ -31,4 +37,7 @@ public class UserDto
 
     /// <summary>Gets or sets who last modified the user (user ID).</summary>
     public required string ModifiedBy { get; set; }
+
+    /// <summary>Gets or sets the names of roles assigned to this user.</summary>
+    public List<string> Roles { get; set; } = [];
 }

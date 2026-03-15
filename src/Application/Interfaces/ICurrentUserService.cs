@@ -24,4 +24,16 @@ public interface ICurrentUserService
     /// Returns an empty string when no authenticated user is present.
     /// </summary>
     string UserIdString { get; }
+
+    /// <summary>
+    /// Gets the role names of the currently authenticated user extracted from JWT claims.
+    /// Returns an empty enumerable when no authenticated user is present.
+    /// </summary>
+    IEnumerable<string> Roles { get; }
+
+    /// <summary>
+    /// Gets the permission keys of the currently authenticated user extracted from JWT claims.
+    /// Returns an empty enumerable when no authenticated user is present.
+    /// </summary>
+    IEnumerable<string> Permissions { get; }
 }

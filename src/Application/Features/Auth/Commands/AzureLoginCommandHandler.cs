@@ -64,19 +64,26 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
         var displayName = _azureAdTokenValidator.GetClaimValue(principal, "name")
             ?? email;
 
+        // Split displayName (e.g. "John Smith") into firstName / lastName.
+        var nameParts = displayName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        var displayFirstName = nameParts.Length > 0 ? nameParts[0] : displayName;
+        var displayLastName  = nameParts.Length > 1 ? nameParts[1] : string.Empty;
+
         // 3. Find or create user in database.
         // Look up by AzureAdObjectId first; fall back to email so that an existing
         // local account with the same address is adopted rather than duplicated.
         var user = await _context.Users
                        .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+                           .ThenInclude(r => r!.RolePermissions).ThenInclude(rp => rp.Permission)
                        .FirstOrDefaultAsync(u => u.AzureAdObjectId == azureAdObjectId, cancellationToken)
                    ?? await _context.Users
                        .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+                           .ThenInclude(r => r!.RolePermissions).ThenInclude(rp => rp.Permission)
                        .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (user == null)
         {
-            user = new User(email, displayName, passwordHash: null);
+            user = new User(email, displayFirstName, displayLastName, passwordHash: null);
             user.ProvisionAzureAd(azureAdObjectId);
             user.Activate();
 
@@ -100,9 +107,9 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
             // User exists — sync Azure AD identity and profile.
             bool hasChanges = false;
 
-            if (user.FullName != displayName)
+            if (user.FirstName != displayFirstName || user.LastName != displayLastName)
             {
-                user.UpdateDisplayName(displayName);
+                user.UpdateName(displayFirstName, displayLastName);
                 hasChanges = true;
             }
 
@@ -131,18 +138,28 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
                 $"User account is {user.Status}. Please contact support.");
         }
 
-        // 5. Extract roles from database
+        // 5. Extract roles and permissions from the loaded navigation tree
         var roles = user.UserRoles
             .Where(ur => ur.Role != null)
             .Select(ur => ur.Role!.Name)
             .ToList();
 
-        // 6. Generate internal JWT token
+        var permissions = user.UserRoles
+            .Where(ur => ur.Role != null)
+            .SelectMany(ur => ur.Role!.RolePermissions)
+            .Where(rp => rp.Permission != null)
+            .Select(rp => rp.Permission!.Name)
+            .Distinct()
+            .ToList();
+
+        // 6. Generate internal JWT token with role + permission claims
         var token = _tokenService.GenerateToken(
             user.Id.ToString(),
             user.Email,
-            user.FullName,
-            roles);
+            user.FirstName,
+            user.LastName,
+            roles,
+            permissions);
 
         // 7. Return login response
         return new LoginResponse
@@ -150,7 +167,8 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
             Token = token,
             UserId = user.Id,
             Email = user.Email,
-            FullName = user.FullName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
             Roles = roles,
             ExpiresIn = _tokenService.ExpirationMinutes * 60
         };

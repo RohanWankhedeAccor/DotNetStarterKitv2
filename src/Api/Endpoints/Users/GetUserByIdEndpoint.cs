@@ -22,7 +22,8 @@ public static class GetUserByIdEndpoint
             .Produces<UserDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status401Unauthorized)
-            .RequireAuthorization();
+            .Produces(StatusCodes.Status403Forbidden)
+            .RequireAuthorization("CanViewUsers");
     }
 
     private static async Task<IResult> GetUserById(

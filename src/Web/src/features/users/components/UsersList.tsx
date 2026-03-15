@@ -29,7 +29,7 @@ export default function UsersList({ users, isLoading }: UsersListProps) {
         <thead className="bg-muted">
           <tr>
             <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-            <th className="px-6 py-3 text-left text-sm font-semibold">Full Name</th>
+            <th className="px-6 py-3 text-left text-sm font-semibold">Name</th>
             <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
             <th className="px-6 py-3 text-left text-sm font-semibold">Created</th>
           </tr>
@@ -43,7 +43,7 @@ export default function UsersList({ users, isLoading }: UsersListProps) {
                   {user.email}
                 </div>
               </td>
-              <td className="px-6 py-4 text-sm">{user.fullName}</td>
+              <td className="px-6 py-4 text-sm">{user.firstName} {user.lastName}</td>
               <td className="px-6 py-4 text-sm">
                 <span className="px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary">
                   {user.status}

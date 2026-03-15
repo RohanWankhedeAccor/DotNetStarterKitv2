@@ -17,7 +17,7 @@ public class CreateUserCommandValidatorTests
     [Fact]
     public void Validate_WithEmptyEmail_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "", FullName = "Test", Password = "password123" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "", FirstName = "Test", LastName = "User", Password = "password123" });
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Email");
     }
@@ -25,31 +25,31 @@ public class CreateUserCommandValidatorTests
     [Fact]
     public void Validate_WithInvalidEmailFormat_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "not-an-email", FullName = "Test", Password = "password123" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "not-an-email", FirstName = "Test", LastName = "User", Password = "password123" });
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Email");
     }
 
     [Fact]
-    public void Validate_WithEmptyFullName_FailsValidation()
+    public void Validate_WithEmptyFirstName_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FullName = "", Password = "password123" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FirstName = "", LastName = "User", Password = "password123" });
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "FullName");
+        result.Errors.Should().Contain(e => e.PropertyName == "FirstName");
     }
 
     [Fact]
-    public void Validate_WithFullNameExceeding200Chars_FailsValidation()
+    public void Validate_WithFirstNameExceeding100Chars_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FullName = new string('A', 201), Password = "password123" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FirstName = new string('A', 101), LastName = "User", Password = "password123" });
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == "FullName");
+        result.Errors.Should().Contain(e => e.PropertyName == "FirstName");
     }
 
     [Fact]
     public void Validate_WithPasswordUnder8Chars_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FullName = "Test", Password = "short" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FirstName = "Test", LastName = "User", Password = "short" });
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Password");
     }
@@ -57,7 +57,7 @@ public class CreateUserCommandValidatorTests
     [Fact]
     public void Validate_WithEmptyPassword_FailsValidation()
     {
-        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FullName = "Test", Password = "" });
+        var result = _validator.Validate(new CreateUserCommand { Email = "test@test.com", FirstName = "Test", LastName = "User", Password = "" });
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "Password");
     }
@@ -65,7 +65,8 @@ public class CreateUserCommandValidatorTests
     private static CreateUserCommand ValidCommand() => new()
     {
         Email = "valid@example.com",
-        FullName = "Valid User",
+        FirstName = "Valid",
+        LastName = "User",
         Password = "password123"
     };
 }

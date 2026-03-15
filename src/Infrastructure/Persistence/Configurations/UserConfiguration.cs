@@ -23,9 +23,18 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(256);
 
-        builder.Property(u => u.FullName)
+        // Nullable: users provisioned via SSO/seeder may not have a username yet.
+        builder.Property(u => u.Username)
+            .IsRequired(false)
+            .HasMaxLength(50);
+
+        builder.Property(u => u.FirstName)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(100);
+
+        builder.Property(u => u.LastName)
+            .IsRequired()
+            .HasMaxLength(100);
 
         // Nullable: SSO/OAuth users authenticated via Entra ID Phase 2
         // will not have a local password hash.
@@ -55,6 +64,12 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ModifiedBy)
             .IsRequired()
             .HasMaxLength(128);
+
+        // Sparse unique index: Username must be unique when set, but null is allowed for many users.
+        builder.HasIndex(u => u.Username)
+            .IsUnique()
+            .HasDatabaseName("IX_Users_Username")
+            .HasFilter("[Username] IS NOT NULL");
 
         // Unique index: two users cannot share the same email address.
         builder.HasIndex(u => u.Email)

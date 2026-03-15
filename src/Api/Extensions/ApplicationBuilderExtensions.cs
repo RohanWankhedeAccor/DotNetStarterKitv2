@@ -77,6 +77,7 @@ public static class ApplicationBuilderExtensions
         app.MapCreateUser();
         app.MapGetUserById();
         app.MapGetUsers();
+        app.MapAssignRole();
 
         // Health check endpoint
         app.MapHealthCheck();

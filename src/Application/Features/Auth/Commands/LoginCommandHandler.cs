@@ -11,6 +11,8 @@ namespace Application.Features.Auth.Commands;
 
 /// <summary>
 /// Handles login requests by verifying credentials and issuing JWT tokens.
+/// Loads the user's roles and all permissions derived from those roles so that
+/// both role and permission claims are embedded in the token.
 /// </summary>
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
@@ -32,42 +34,51 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     }
 
     /// <summary>
-    /// Executes the login command: verifies email/password and returns a JWT token.
+    /// Executes the login command: verifies email/password and returns a JWT token
+    /// containing both role claims and fine-grained permission claims.
     /// </summary>
     /// <exception cref="NotFoundException">Thrown when user with given email is not found (HTTP 404)</exception>
     /// <exception cref="UnauthorizedException">Thrown when password is invalid or user is not active (HTTP 401)</exception>
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        // Find user by email
+        // Load user with roles and their permissions in a single round-trip.
         var user = await _dbContext.Users
             .Include(u => u.UserRoles)
-            .ThenInclude(ur => ur.Role)
+                .ThenInclude(ur => ur.Role)
+                    .ThenInclude(r => r!.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken)
             ?? throw new NotFoundException(nameof(User), request.Email);
 
-        // Verify password
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash ?? string.Empty))
             throw new UnauthorizedException("Invalid email or password.");
 
-        // Ensure user is active
         if (user.Status != UserStatus.Active)
             throw new UnauthorizedException($"User account is {user.Status.ToString().ToLowerInvariant()}. Please contact support.");
 
-        // Extract roles (filter out null roles to satisfy nullable reference checks)
         var roles = user.UserRoles
             .Where(ur => ur.Role != null)
             .Select(ur => ur.Role!.Name)
             .ToList();
 
-        // Generate JWT token
-        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Email, user.FullName, roles);
+        // Collect all unique permissions from all assigned roles.
+        var permissions = user.UserRoles
+            .Where(ur => ur.Role != null)
+            .SelectMany(ur => ur.Role!.RolePermissions)
+            .Where(rp => rp.Permission != null)
+            .Select(rp => rp.Permission!.Name)
+            .Distinct()
+            .ToList();
+
+        var token = _tokenService.GenerateToken(user.Id.ToString(), user.Email, user.FirstName, user.LastName, roles, permissions);
 
         return new LoginResponse
         {
             Token = token,
             UserId = user.Id,
             Email = user.Email,
-            FullName = user.FullName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
             Roles = roles,
             ExpiresIn = _tokenService.ExpirationMinutes * 60
         };

@@ -1,7 +1,8 @@
 export interface User {
   id: string
   email: string
-  fullName: string
+  firstName: string
+  lastName: string
   status: 'Active' | 'Inactive' | 'Suspended' | 'PendingActivation'
   createdAt: string
   createdBy: string
@@ -11,7 +12,8 @@ export interface User {
 
 export interface UserDTO {
   email: string
-  fullName: string
+  firstName: string
+  lastName: string
   password: string
 }
 

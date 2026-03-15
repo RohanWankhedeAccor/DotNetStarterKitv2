@@ -12,8 +12,11 @@ public class CreateUserCommand : IRequest<UserDto>
     /// <summary>Gets or sets the email address for the new user.</summary>
     public required string Email { get; set; }
 
-    /// <summary>Gets or sets the full name for the new user.</summary>
-    public required string FullName { get; set; }
+    /// <summary>Gets or sets the first name for the new user.</summary>
+    public required string FirstName { get; set; }
+
+    /// <summary>Gets or sets the last name for the new user.</summary>
+    public required string LastName { get; set; }
 
     /// <summary>Gets or sets the plain-text password (will be hashed).</summary>
     public required string Password { get; set; }
