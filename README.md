@@ -102,59 +102,62 @@ Domain ← Application ← Infrastructure ← Api
 
 ## 🏗️ Features Included
 
-### ✅ Phase 1: Architecture
-- Clean Architecture with CQRS
-- Feature-sliced design patterns
-- Dependency injection configuration
-- Error handling middleware
+### ✅ Architecture & Patterns
+- **Clean Architecture** — Domain → Application → Infrastructure → Api, compiler-enforced one-way dependencies
+- **CQRS** — Commands / Queries via MediatR; one handler file per request
+- **Repository + Unit of Work** — `IRepository<T>` / `IUnitOfWork` abstractions over EF Core
+- **Result Pattern** — `Result<T>` / `Result` discriminated unions; handlers return typed errors instead of throwing exceptions
+- **Options Pattern** — all config sections bound to strongly-typed classes via `IOptions<T>`
+- **MediatR Pipeline Behaviors** — `ValidationBehavior` (FluentValidation) + `LoggingBehavior` (request/duration)
 
-### ✅ Phase 2: Domain Layer
-- Base entity with audit trails (CreatedAt, CreatedBy, ModifiedAt, ModifiedBy, IsDeleted)
-- Domain entities: User, Role, UserRole, Product, Project
-- Custom domain exceptions
+### ✅ Domain Layer
+- Base entity with audit fields (`CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`) and soft-delete (`IsDeleted`)
+- Domain entities: **User**, **Role**, **UserRole**, **Product**, **Project**
+- Domain methods on entities (`Activate`, `Deactivate`, `Delete`, `Restore`, `Update`)
 - Zero external dependencies
 
-### ✅ Phase 3: Infrastructure
-- EF Core 9 with code-first migrations
-- Entity type configurations with soft-delete
-- Design-time DbContext factory
-- Audit field population
+### ✅ Infrastructure & Services
+- **EF Core 9** code-first migrations, SQL Server
+- **Audit Trail** — `AuditLog` entity captures every insert/update/delete with old/new JSON snapshots
+- **Soft-delete** global query filters on all entities
+- **Serilog** structured logging with request logging and Correlation ID enrichment on every log line
+- **Correlation ID middleware** — reads/generates `X-Correlation-Id`, propagates to response header and all logs
+- **Sensitive data masking** — `[Sensitive]` attribute + Serilog destructuring policy redacts PII before log emission
+- **ICacheService** — in-memory cache abstraction with prefix-based invalidation
+- **IEmailService** — `SmtpEmailService` (MailKit) + `LoggingEmailService` dev stub
+- **IFileStorageService** — local-disk implementation with cloud-ready interface (`UploadAsync`, `DownloadAsync`, `GetUrlAsync`)
+- **IHttpApiClient** — typed HTTP client with `CorrelationIdDelegatingHandler` and `ExternalApiException` → 502
 
-### ✅ Phase 4: Application Layer
-- CQRS handlers (Commands & Queries)
-- FluentValidation validators
-- AutoMapper profiles
-- Pagination support
-- MediatR pipeline behaviors
+### ✅ Application Features
+- **Products CRUD** — full Clean Architecture stack with create, get, list (filtered/sorted/paged), delete
+- **Users CRUD** — create, get by ID, list with filtering/sorting/pagination, assign roles
+- **Authentication** — Azure AD / Entra ID with JWT + HttpOnly cookie session
+- **RBAC** — fine-grained permissions (`users.view`, `products.create`, `roles.assign`, etc.) embedded in JWT claims
+- **Pagination + Filtering + Sorting** — `searchTerm`, `sortBy`, `sortDescending` on all list endpoints
 
-### ✅ Phase 5: API Layer
-- 12 REST endpoints (Users, Products)
-- Global exception handling → ProblemDetails
-- Security headers middleware
-- CORS configuration
-- OpenAPI/Swagger (disabled pending Phase 2)
+### ✅ API Layer
+- 16 REST endpoints (Auth, Users, Products) as ASP.NET Core 9 Minimal APIs
+- `ResultExtensions` — maps `Result<T>` to correct HTTP status (200/201/204/401/403/404/409/502)
+- Global exception handling → RFC 9457 ProblemDetails
+- Security headers middleware (`X-Frame-Options`, `X-Content-Type-Options`, HSTS, etc.)
+- CORS pre-configured for `localhost:5173`
+- OpenAPI / Swagger
 
-### ✅ Phase 6: React Frontend
-- Feature-sliced architecture
-- TanStack Query for server state
-- Redux Toolkit for auth state
+### ✅ React Frontend
+- Feature-sliced architecture (`features/users/`, `features/products/`)
+- TanStack Query for server state, Redux Toolkit for auth state
 - React Hook Form + Zod validation
-- Tailwind CSS styling
-- Responsive design (mobile, tablet, desktop)
+- Azure AD SSO via MSAL — silent login, HttpOnly cookie session
+- Tailwind CSS, responsive design
 
-### ✅ Phase 7: Documentation
-- Comprehensive setup guide
-- Architecture documentation
-- Development standards & conventions
-- API design guidelines
-- Frontend patterns guide
-- Security best practices
+### ✅ Testing — 118 tests, all green
+- **73 unit tests** — NSubstitute mocks, FluentAssertions, IUnitOfWork pattern, Result assertions
+- **45 integration tests** — `CustomWebApplicationFactory` with SQLite in-memory, full HTTP round-trips covering 401/403/404/409/201/204 paths
+- Frontend: Vitest + React Testing Library + MSW
 
-### ✅ Phase 8: Database
-- Initial migration applied
-- All tables created (Users, Roles, UserRoles, Products, Projects)
-- Audit fields on all entities
-- Soft-delete pattern enabled
+### ✅ CI/CD
+- GitHub Actions — backend (build + test) + frontend (type-check + lint + test) gate jobs
+- Branch protection on `main` and `develop` requires passing CI + PR approval
 
 ---
 
@@ -298,19 +301,16 @@ npm run test:ui
 
 ## 🚢 Deployment
 
-### Current Status (Phase 1)
-**NOT production-ready:**
-- Authentication is mocked
-- No email service
-- No caching (Redis)
-- No job queue (Hangfire)
+### Current Status
+**Functionally complete for dev/staging. Not yet production-hardened:**
+- No background job queue (Hangfire / Quartz)
+- No feature flags (`Microsoft.FeatureManagement`)
+- No Redis distributed cache (currently in-memory)
+- No SignalR real-time updates
 
-### Future Phases
-- **Phase 2**: Entra ID authentication
-- **Phase 3**: Email service + Hangfire jobs
-- **Phase 4**: Redis caching + SignalR real-time
-- **Phase 5**: Admin dashboard
-- **Phase 6**: Staging/Production deployment guides
+### Remaining Phases
+- **Next**: Frontend Products feature slice (pages, hooks, tests)
+- **Later**: Background Jobs, Feature Flags, Redis, SignalR, Admin dashboard
 
 ---
 
