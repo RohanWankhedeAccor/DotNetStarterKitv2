@@ -18,7 +18,7 @@ Built on **Clean Architecture**, **CQRS**, and **feature-sliced design** princip
 
 **Terminal 1 — Backend:**
 ```bash
-cd D:\RWANKHEDE\Claude\DotNetStarterKitv2
+cd DotNetStarterKitv2
 dotnet build
 dotnet test --no-build
 dotnet run --project src/Api
@@ -39,18 +39,10 @@ Visit **http://localhost:5173** to see the app!
 
 ## 📚 Documentation
 
-All developer guidance is in `.claude/`:
-
 | Document | Purpose |
 |----------|---------|
-| **[setup.md](./.claude/setup.md)** | Local development setup (database, migrations, troubleshooting) |
-| **[CLAUDE.md](./.claude/CLAUDE.md)** | Architecture overview & tech stack reference |
-| **[rules/development.md](./.claude/rules/development.md)** | Coding standards, naming conventions, git workflow, code review |
-| **[rules/api.md](./.claude/rules/api.md)** | REST API design, endpoints, error handling, CORS |
-| **[rules/frontend.md](./.claude/rules/frontend.md)** | React patterns, state management, component design, testing |
-| **[rules/security.md](./.claude/rules/security.md)** | Authentication, secrets, CORS, security headers, compliance |
-
-**Start here:** [setup.md](./.claude/setup.md)
+| **[docs/architecture.md](./docs/architecture.md)** | Architecture overview & tech stack reference |
+| **[docs/BACKLOG_ANALYSIS.md](./docs/BACKLOG_ANALYSIS.md)** | Feature audit and remaining backlog |
 
 ---
 
@@ -68,7 +60,7 @@ DotNetStarterKitv2/
 ├── tests/
 │   ├── Unit/                      # Domain + Application tests
 │   └── Integration/               # API + Infrastructure tests
-├── .claude/                       # AI guidance & documentation
+├── docs/                          # Project documentation
 ├── .github/workflows/             # GitHub Actions CI/CD
 └── DotNetStarterKitv2.sln
 ```
@@ -200,10 +192,7 @@ git push origin feat/my-feature
 - **scope**: Feature name (users, products, auth)
 - **subject**: Imperative mood, no period, max 50 chars
 
-See [rules/development.md](./.claude/rules/development.md) for detailed conventions.
-
 ### 5. Open Pull Request
-Check the PR checklist in [rules/development.md](./.claude/rules/development.md):
 - ✅ Code builds without warnings
 - ✅ All tests pass
 - ✅ Naming conventions followed
@@ -240,7 +229,7 @@ dotnet ef migrations add MigrationName \
   --startup-project src/Api
 ```
 
-See [setup.md](./.claude/setup.md) for detailed database instructions.
+See `docs/` for detailed database instructions.
 
 ---
 
@@ -287,15 +276,12 @@ npm run test:ui
 - Never commit `.env` files (create `.env.example`)
 - Use `dotnet user-secrets` for local secrets
 - Validate all input on backend
-- Review [rules/security.md](./.claude/rules/security.md)
 
-### Production (Phase 2+)
+### Production
 - Use Azure Key Vault for secrets
 - Enforce HTTPS
-- Implement authentication (Entra ID)
 - Enable rate limiting
 - Configure CORS for production domain
-- Run security headers
 
 ---
 
@@ -365,7 +351,7 @@ npm run preview
 **"npm install hangs"**
 → Clear cache: `npm cache clean --force` then `npm install --legacy-peer-deps`
 
-See [setup.md](./.claude/setup.md#common-issues--solutions) for more.
+See `docs/` for more.
 
 ---
 
@@ -396,13 +382,9 @@ See [setup.md](./.claude/setup.md#common-issues--solutions) for more.
 
 ## 🤝 Contributing
 
-See [rules/development.md](./.claude/rules/development.md) for:
-- Naming conventions
-- Code organization
-- Commit message format
-- Pull request checklist
-- Code review standards
-- Testing guidelines
+- Follow naming conventions and commit message format (`type(scope): subject`)
+- All tests must pass before raising a PR
+- PRs target `develop`; `main` is release-only
 
 ---
 
@@ -415,9 +397,8 @@ This project is created for educational and development purposes.
 ## 🚀 Next Steps
 
 1. **New to the project?**
-   - Read [setup.md](./.claude/setup.md) for local setup
-   - Review [CLAUDE.md](./.claude/CLAUDE.md) for architecture overview
-   - Check [rules/development.md](./.claude/rules/development.md) for conventions
+   - Review `docs/architecture.md` for architecture overview
+   - Run the Quick Start above
 
 2. **Ready to code?**
    - Create a feature branch
