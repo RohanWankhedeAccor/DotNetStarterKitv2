@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Application.Interfaces;
 using Domain.Exceptions;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
@@ -18,32 +20,34 @@ namespace Infrastructure.Identity;
 /// 2. Validate token signature using those keys
 /// 3. Verify issuer, audience, and expiration
 /// 4. Return ClaimsPrincipal with validated claims
+///
+/// Configuration is supplied via <see cref="AzureAdOptions"/> (bound from the "AzureAd" config section).
 /// </summary>
 internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
 {
-    private readonly string _tenantId;
-    private readonly string _apiClientId;
-    private readonly string _spaClientId;
+    private readonly IReadOnlyList<string> _validIssuers;
+    private readonly IReadOnlyList<string> _validAudiences;
     private readonly IConfigurationManager<OpenIdConnectConfiguration> _configurationManager;
     private readonly JwtSecurityTokenHandler _tokenHandler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AzureAdTokenValidator"/> class.
     /// </summary>
-    /// <param name="tenantId">Azure AD tenant ID (UUID).</param>
-    /// <param name="apiClientId">API Application (Client) ID from Azure AD app registration.</param>
-    /// <param name="spaClientId">SPA Application (Client) ID — audience of ID tokens issued to the frontend.</param>
-    public AzureAdTokenValidator(string tenantId, string apiClientId, string spaClientId)
+    /// <param name="options">Azure AD configuration bound from the "AzureAd" appsettings section.</param>
+    public AzureAdTokenValidator(IOptions<AzureAdOptions> options)
     {
-        _tenantId = tenantId;
-        _apiClientId = apiClientId;
-        _spaClientId = spaClientId;
+        var azureAd = options.Value;
+
+        _validIssuers = azureAd.GetValidIssuers();
+        _validAudiences = azureAd.GetValidAudiences();
+
         // MapInboundClaims = false keeps original JWT claim names (e.g. "oid", "email",
         // "preferred_username") instead of mapping them to long .NET CLR URI strings.
         _tokenHandler = new JwtSecurityTokenHandler { MapInboundClaims = false };
 
-        // Fetch signing keys from the v2.0 OpenID Connect metadata endpoint
-        var metadataAddress = $"https://login.microsoftonline.com/{tenantId}/v2.0/.well-known/openid-configuration";
+        // Fetch signing keys from the v2.0 OpenID Connect metadata endpoint.
+        // Instance already includes the trailing slash (e.g. "https://login.microsoftonline.com/").
+        var metadataAddress = $"{azureAd.Instance.TrimEnd('/')}/{azureAd.TenantId}/v2.0/.well-known/openid-configuration";
         var documentRetriever = new HttpDocumentRetriever { RequireHttps = true };
         _configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
             metadataAddress,
@@ -56,27 +60,16 @@ internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
     {
         try
         {
-            // Retrieve Azure AD configuration (includes public keys)
+            // Retrieve Azure AD configuration (includes public signing keys).
             var config = await _configurationManager.GetConfigurationAsync(cancellationToken);
 
             // Configure token validation parameters.
-            // ValidIssuers covers both v2.0 tokens (login.microsoftonline.com) and
-            // v1.0 legacy tokens (sts.windows.net) — mirrors the guide's recommendation.
-            // ValidAudiences accepts both custom API scope and Microsoft Graph scope:
-            // - api://{clientId} for custom API access tokens
-            // - https://graph.microsoft.com for Microsoft Graph access tokens
+            // ValidIssuers covers both v2.0 (login.microsoftonline.com) and
+            // v1.0 legacy tokens (sts.windows.net) — computed from AzureAdOptions.
             var validationParameters = new TokenValidationParameters
             {
-                ValidIssuers = new[]
-                {
-                    $"https://login.microsoftonline.com/{_tenantId}/v2.0",
-                    $"https://sts.windows.net/{_tenantId}/"
-                },
-                ValidAudiences = new[]
-                {
-                    _spaClientId,              // ID token audience (frontend SPA client ID)
-                    $"api://{_apiClientId}",   // Access token audience (future, when admin consent available)
-                },
+                ValidIssuers = _validIssuers,
+                ValidAudiences = _validAudiences,
                 IssuerSigningKeys = config.SigningKeys,
                 ValidateIssuerSigningKey = true,
                 ValidateIssuer = true,
@@ -85,8 +78,7 @@ internal sealed class AzureAdTokenValidator : IAzureAdTokenValidator
                 ClockSkew = TimeSpan.Zero
             };
 
-            // Validate and return ClaimsPrincipal
-            var principal = _tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+            var principal = _tokenHandler.ValidateToken(token, validationParameters, out _);
             return principal;
         }
         catch (SecurityTokenExpiredException ex)

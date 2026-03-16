@@ -1,9 +1,11 @@
 using Application.Interfaces;
 using Infrastructure.Identity;
+using Infrastructure.Options;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.DependencyInjection;
 
@@ -23,85 +25,82 @@ namespace Infrastructure.DependencyInjection;
 public static class InfrastructureServiceExtensions
 {
     /// <summary>
-    /// Registers all Infrastructure layer services: EF Core DbContext, HTTP context
-    /// accessor, and the current-user and datetime services.
+    /// Registers all Infrastructure layer services: strongly-typed options, EF Core DbContext,
+    /// and identity/utility services (current user, datetime, password hasher, token service).
     /// </summary>
     /// <param name="services">The ASP.NET Core service collection to register into.</param>
     /// <param name="configuration">
     /// The application configuration (appsettings.json + environment overrides).
-    /// Used to read the <c>ConnectionStrings:DefaultConnection</c> value.
     /// </param>
     /// <returns>The <paramref name="services"/> collection for fluent chaining.</returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown at startup if <c>ConnectionStrings:DefaultConnection</c> is absent or null
-    /// in the configuration. Fail-fast at startup is preferable to a cryptic runtime error
-    /// on the first database query.
-    /// </exception>
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Read the connection string — fail fast at startup if it is not configured.
+        // ── Strongly-typed options ────────────────────────────────────────────────
+        // ValidateDataAnnotations() enforces [Required], [MinLength], [Range] etc.
+        // ValidateOnStart() makes the app fail immediately at startup if config is
+        // missing or invalid — far preferable to a cryptic runtime error mid-request.
+
+        services.AddOptions<JwtOptions>()
+            .BindConfiguration("Jwt")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddOptions<DatabaseOptions>()
+            .BindConfiguration("Database")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // AzureAd options are optional — no ValidateOnStart so the app starts without
+        // Azure AD configured (local JWT auth only).
+        services.AddOptions<AzureAdOptions>()
+            .BindConfiguration("AzureAd");
+
+        // ── Database ──────────────────────────────────────────────────────────────
+        // Connection string uses the standard ASP.NET Core named-connection-string
+        // pattern (not the Options pattern) to stay compatible with EF tooling.
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException(
                 "Connection string 'DefaultConnection' not found in configuration. " +
                 "Add it to appsettings.Development.json (dev) or Azure Key Vault (staging/prod).");
 
-        // Register ApplicationDbContext with SQL Server provider.
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+        {
+            var dbOptions = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
             options.UseSqlServer(
                 connectionString,
-                sqlOptions =>
-                {
-                    // Enable automatic retry on transient SQL failures
-                    sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(5),
-                        errorNumbersToAdd: null);
-                }));
+                sqlOptions => sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: dbOptions.MaxRetryCount,
+                    maxRetryDelay: TimeSpan.FromSeconds(dbOptions.MaxRetryDelaySeconds),
+                    errorNumbersToAdd: null));
+        });
 
         // Register the interface alias so Application layer handlers receive
         // IApplicationDbContext from DI — never the concrete ApplicationDbContext.
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
 
-        // Register the current-user service as scoped — one instance per HTTP request
-        // Note: IHttpContextAccessor must be registered separately in Program.cs (Api layer)
-        // to keep Infrastructure decoupled from HTTP concerns
+        // ── Identity / utility services ───────────────────────────────────────────
+
+        // Scoped — one instance per HTTP request.
+        // IHttpContextAccessor is registered separately in Program.cs (Api layer)
+        // to keep Infrastructure decoupled from HTTP host configuration.
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
-        // Register the datetime service as singleton
         services.AddSingleton<IDateTimeService, DateTimeService>();
-
-        // Register password hasher as scoped (allows stateful implementations if needed)
         services.AddScoped<IPasswordHasher, PasswordHasher>();
 
-        // Register JWT token service as singleton
-        // Uses configuration for secret key and token settings
-        var jwtSecret = configuration["Jwt:SecretKey"]
-            ?? throw new InvalidOperationException(
-                "JWT configuration 'Jwt:SecretKey' not found in configuration. " +
-                "Add it to appsettings.Development.json (dev) or Azure Key Vault (staging/prod).");
+        // JWT token service resolves IOptions<JwtOptions> via DI — no raw config reads.
+        services.AddSingleton<ITokenService, JwtTokenService>();
 
-        var jwtIssuer = configuration["Jwt:Issuer"] ?? "DotNetStarterKitv2";
-        var jwtAudience = configuration["Jwt:Audience"] ?? "DotNetStarterKitv2-App";
-        var jwtExpirationMinutes = int.TryParse(configuration["Jwt:ExpirationMinutes"], out var parsed) ? parsed : 60;
-
-        services.AddSingleton<ITokenService>(new JwtTokenService(jwtSecret, jwtIssuer, jwtAudience, jwtExpirationMinutes));
-
-        // Register Azure AD token validator.
-        // Config keys follow the Microsoft.Identity.Web standard naming convention
-        // (AzureAd:TenantId, AzureAd:ClientId) so the same appsettings block can be
-        // reused if the project later migrates to AddMicrosoftIdentityWebApi.
-        var azureAdTenantId = configuration["AzureAd:TenantId"];
-        var azureAdApiClientId = configuration["AzureAd:ClientId"];
-        var azureAdSpaClientId = configuration["AzureAd:SpaClientId"];
-
-        if (!string.IsNullOrEmpty(azureAdTenantId) && !string.IsNullOrEmpty(azureAdApiClientId)
-            && !string.IsNullOrEmpty(azureAdSpaClientId))
+        // ── Azure AD token validator (conditional) ────────────────────────────────
+        // Only registered when TenantId, ClientId, and SpaClientId are all configured.
+        // If any are absent, Azure AD login is disabled and only local JWT auth works.
+        var azureAdOptions = configuration.GetSection("AzureAd").Get<AzureAdOptions>();
+        if (azureAdOptions?.IsConfigured == true)
         {
-            services.AddSingleton<IAzureAdTokenValidator>(
-                new AzureAdTokenValidator(azureAdTenantId, azureAdApiClientId, azureAdSpaClientId));
+            services.AddSingleton<IAzureAdTokenValidator, AzureAdTokenValidator>();
         }
 
         return services;

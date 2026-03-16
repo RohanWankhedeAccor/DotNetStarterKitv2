@@ -1,15 +1,19 @@
 using Infrastructure.Identity;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 
 namespace Integration.Helpers;
 
 /// <summary>Generates real JWTs using the same config as the test factory.</summary>
 public static class TestJwtTokenHelper
 {
-    private static readonly JwtTokenService _service = new(
-        TestConstants.JwtSecret,
-        TestConstants.JwtIssuer,
-        TestConstants.JwtAudience,
-        expirationMinutes: 60);
+    private static readonly JwtTokenService _service = new(Options.Create(new JwtOptions
+    {
+        SecretKey = TestConstants.JwtSecret,
+        Issuer = TestConstants.JwtIssuer,
+        Audience = TestConstants.JwtAudience,
+        ExpirationMinutes = 60
+    }));
 
     public static string GenerateToken(
         string userId = "00000000-0000-0000-0000-000000000001",
