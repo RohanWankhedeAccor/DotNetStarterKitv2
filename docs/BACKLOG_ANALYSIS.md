@@ -1,81 +1,89 @@
 # Backlog Analysis — Features & Design Patterns
-**Date:** 2026-03-16
+**Updated:** 2026-03-16 (post Result Pattern, post Products CRUD)
+
+> **Note:** All analysis is against the `feat/delete-product` local branch,
+> which is 15 commits ahead of `origin/feat/delete-product` and includes all
+> features built since the last remote push.
 
 ---
 
 ## Part 1: Feature Audit
 
-### Results
+### Summary
 
 | # | Feature | Verdict |
 |---|---------|---------|
-| 1 | Correlation ID / Request Tracing | **Partial** |
-| 2 | Configuration / Options Pattern | **Absent** |
+| 1 | Correlation ID / Request Tracing | **Present ✅** |
+| 2 | Configuration / Options Pattern | **Present ✅** |
 | 3 | Audit Fields | **Present ✅** |
-| 4 | Audit Trail (dedicated log table) | **Absent** |
+| 4 | Audit Trail (dedicated log table) | **Present ✅** |
 | 5 | Soft Delete | **Present ✅** |
-| 6 | Pagination / Filtering / Sorting | **Partial** |
-| 7 | Caching Abstraction | **Absent** |
-| 8 | Email / Notification Service | **Absent** |
-| 9 | File Storage Abstraction | **Absent** |
-| 10 | External API Client Wrapper | **Partial** |
+| 6 | Pagination / Filtering / Sorting | **Present ✅** |
+| 7 | Caching Abstraction | **Present ✅** |
+| 8 | Email / Notification Service | **Present ✅** |
+| 9 | File Storage Abstraction | **Present ✅** |
+| 10 | External API Client Wrapper | **Present ✅** |
 | 11 | Background Job Support | **Absent** |
 | 12 | Feature Flags | **Absent** |
-| 13 | Sensitive Data Masking | **Absent** |
+| 13 | Sensitive Data Masking | **Present ✅** |
 
 ### Detail
 
-**1. Correlation ID / Request Tracing — Partial**
-`traceId` is emitted in ProblemDetails error responses via `Activity.Current?.Id ?? context.TraceIdentifier`, and `UseSerilogRequestLogging` logs method/path/status/elapsed. But no `X-Correlation-Id` header is read or written, no Serilog `LogContext.PushProperty("CorrelationId", ...)` enricher exists, and trace IDs only appear on error responses — not on every log line.
-Key files: `ExceptionHandlerMiddleware.cs`, `ApplicationBuilderExtensions.cs`
+**1. Correlation ID / Request Tracing — Present ✅**
+`CorrelationIdMiddleware` reads `X-Correlation-Id` from the request (or generates a new GUID), writes it back to the response header, and calls `LogContext.PushProperty("CorrelationId", ...)` so every Serilog log line in the request scope carries the correlation ID.
+Key files: `src/Infrastructure/Services/CorrelationIdMiddleware.cs`, `ApplicationBuilderExtensions.cs`
 
-**2. Configuration / Options Pattern — Absent**
-Config values are read directly from `IConfiguration` via raw string keys (`configuration["Jwt:SecretKey"]`, etc.). No `*Options.cs` / `*Settings.cs` classes, no `services.Configure<T>()` calls, no `IOptions<T>` injection anywhere.
-Key files: `InfrastructureServiceExtensions.cs`, `ServiceCollectionExtensions.cs`
+**2. Configuration / Options Pattern — Present ✅**
+All config sections (JWT, SMTP, Azure AD, connection strings) are bound to strongly-typed `*Options` / `*Settings` classes via `services.Configure<T>()`. Handlers inject `IOptions<T>` instead of raw `IConfiguration`.
+Key files: `src/Infrastructure/DependencyInjection/InfrastructureServiceExtensions.cs`
 
 **3. Audit Fields — Present ✅**
-`BaseEntity` carries `CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`. `ApplicationDbContext.SaveChangesAsync` automatically stamps them via `ICurrentUserService` + `IDateTimeService`. All entity configurations enforce `IsRequired/HasMaxLength` on the string fields.
-Key files: `BaseEntity.cs`, `ApplicationDbContext.cs` (lines 99–124)
+`BaseEntity` carries `CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`. `ApplicationDbContext.SaveChangesAsync` automatically stamps them via `ICurrentUserService` + `IDateTimeService`.
+Key files: `src/Domain/Common/BaseEntity.cs`, `ApplicationDbContext.cs`
 
-**4. Audit Trail — Absent**
-Only the current state of each record is tracked (via audit fields). No `AuditLogs` table, no EF Core interceptor, no history of what changed from what to what.
-Key files: `ApplicationDbContext.cs` (DbSet properties confirm no AuditLog)
+**4. Audit Trail (dedicated log table) — Present ✅**
+`AuditLog` entity captures entity type, action, changed-by, timestamp, and old/new JSON for every insert/update/delete. `SaveChangesAsync` override writes audit entries automatically.
+Key files: `src/Domain/Entities/AuditLog.cs`, `ApplicationDbContext.cs`
 
 **5. Soft Delete — Present ✅**
-`BaseEntity.IsDeleted` with `Delete()` / `Restore()` methods. `HasQueryFilter(e => !e.IsDeleted)` applied in every entity configuration. Soft deletes also automatically update `ModifiedAt/ModifiedBy`.
-Key files: `BaseEntity.cs` (lines 62–87), all `*Configuration.cs` files
+`BaseEntity.IsDeleted` with `Delete()` / `Restore()` methods. `HasQueryFilter(e => !e.IsDeleted)` applied in every entity configuration.
+Key files: `src/Domain/Common/BaseEntity.cs`, all `*Configuration.cs` files
 
-**6. Pagination / Filtering / Sorting — Partial**
-`PagedRequest` + `PagedResponse<T>` models are solid. `GetUsersQuery` + handler implement `Skip/Take` with `CountAsync`. However, sort order is hard-coded (`OrderBy(u => u.Email)`) — callers cannot change it. No filtering (`searchTerm`, status, date range) exists anywhere.
-Key files: `PagedRequest.cs`, `PagedResponse.cs`, `GetUsersQueryHandler.cs` (line 38)
+**6. Pagination / Filtering / Sorting — Present ✅**
+`PagedRequest` (pageNumber, pageSize, searchTerm, sortBy, sortDescending) + `PagedResponse<T>`. `GetUsersQueryHandler` and `GetProductsQueryHandler` apply search filters, dynamic `OrderBy` via a switch on `sortBy`, and `Skip/Take`.
+Key files: `src/Application/Common/Pagination/`, `GetUsersQueryHandler.cs`, `GetProductsQueryHandler.cs`
 
-**7. Caching Abstraction — Absent**
-No `IMemoryCache`, `IDistributedCache`, `ICacheService` or any cache provider registered. Not referenced in any `.csproj` or DI extension.
+**7. Caching Abstraction — Present ✅**
+`ICacheService` interface with `Get<T>`, `Set`, `Remove`, `RemoveByPrefix`. Backed by `InMemoryCacheService` wrapping `IMemoryCache`. Used in all list queries (`GetUsersQueryHandler`, `GetProductsQueryHandler`) and cache-busted in create/delete commands.
+Key files: `src/Application/Interfaces/ICacheService.cs`, `src/Infrastructure/Services/InMemoryCacheService.cs`
 
-**8. Email / Notification Service — Absent**
-No `IEmailService`, no SMTP/SendGrid/MailKit references anywhere. Listed as Phase 2+ in `CLAUDE.md`.
+**8. Email / Notification Service — Present ✅**
+`IEmailService` interface with `SendAsync(EmailMessage)`. Backed by `SmtpEmailService` (MailKit) and `LoggingEmailService` (dev stub that logs instead of sending). Dev environment defaults to `LoggingEmailService`.
+Key files: `src/Application/Interfaces/IEmailService.cs`, `src/Infrastructure/Services/SmtpEmailService.cs`
 
-**9. File Storage Abstraction — Absent**
-No file upload/download routes, no blob storage packages, no `IFileStorageService` interface.
+**9. File Storage Abstraction — Present ✅**
+`IFileStorageService` interface with `UploadAsync`, `DownloadAsync`, `DeleteAsync`, `GetUrlAsync`. Backed by `LocalDiskFileStorageService` for development.
+Key files: `src/Application/Interfaces/IFileStorageService.cs`, `src/Infrastructure/Services/LocalDiskFileStorageService.cs`
 
-**10. External API Client Wrapper — Partial**
-No `IHttpClientFactory` or typed HTTP clients registered. `AzureAdTokenValidator.cs` instantiates `HttpDocumentRetriever` directly in its constructor to fetch OIDC metadata — a raw point-dependency, not an abstracted wrapper.
-Key file: `AzureAdTokenValidator.cs` (lines 47–51)
+**10. External API Client Wrapper — Present ✅**
+`IHttpApiClient` interface with typed `GetAsync<T>`, `PostAsync<T>`, `PutAsync<T>`, `DeleteAsync`. Backed by `HttpApiClient` (uses `IHttpClientFactory`). `CorrelationIdDelegatingHandler` propagates `X-Correlation-Id` on outbound calls. `ExternalApiException` maps to HTTP 502 in the exception middleware.
+Key files: `src/Application/Interfaces/IHttpApiClient.cs`, `src/Infrastructure/Services/HttpApiClient.cs`
 
 **11. Background Job Support — Absent**
-No Hangfire, Quartz.NET, `IHostedService`, or `BackgroundService`. Listed as Phase 2+ in `CLAUDE.md`.
+No Hangfire, Quartz.NET, `IHostedService`, or `BackgroundService`. Listed in CLAUDE.md as Phase 2+.
 
 **12. Feature Flags — Absent**
 No `Microsoft.FeatureManagement`, no `FeatureManagement` config section, no `IFeatureManager` usage.
 
-**13. Sensitive Data Masking — Absent**
-No Serilog destructuring policies, no `IDestructuringPolicy`, no masking enrichers. `LoggingBehavior` only logs the MediatR type name (not payloads), which avoids accidental PII leakage — but this is omission, not active masking.
+**13. Sensitive Data Masking — Present ✅**
+`[Sensitive]` attribute marks properties (e.g., `Password`, `Token`). Custom Serilog destructuring policy replaces `[Sensitive]`-marked values with `"[REDACTED]"` before log emission. `LoggingBehavior` uses this to safely log MediatR request payloads.
+Key files: `src/Application/Common/SensitiveAttribute.cs`, `src/Infrastructure/Logging/SensitiveDataDestructuringPolicy.cs`
 
 ---
 
 ## Part 2: Design Patterns Audit
 
-### Results
+### Summary
 
 | # | Pattern | Verdict |
 |---|---------|---------|
@@ -83,126 +91,77 @@ No Serilog destructuring policies, no `IDestructuringPolicy`, no masking enriche
 | 2 | CQRS | **Present ✅** |
 | 3 | Dependency Injection | **Present ✅** |
 | 4 | Middleware Pattern | **Present ✅** |
-| 5 | Repository Pattern | **Absent** (deliberate EF-as-repo — to be replaced per user preference) |
-| 6 | Unit of Work | **Partial** (implicit via DbContext — to be made explicit) |
-| 7 | Options Pattern | **Absent** |
-| 8 | Result Pattern | **Absent** |
-| 9 | Strategy Pattern | **Partial** |
-| 10 | Factory Pattern | **Partial** |
+| 5 | Repository Pattern | **Present ✅** |
+| 6 | Unit of Work | **Present ✅** |
+| 7 | Options Pattern | **Present ✅** |
+| 8 | Result Pattern | **Present ✅** |
+| 9 | Strategy Pattern | **Present ✅** |
+| 10 | Factory Pattern | **Present ✅** |
 | 11 | Adapter Pattern | **Present ✅** |
 | 12 | Pipeline / Chain of Responsibility | **Present ✅** |
 
 ### Detail
 
 **1. Clean Architecture — Present ✅**
-Four separate projects with compiler-enforced one-way dependencies: `Domain` → `Application` → `Infrastructure` → `Api`. Domain has zero external packages. Api is the sole composition root.
+Four separate projects with compiler-enforced one-way dependencies: `Domain` → `Application` → `Infrastructure` → `Api`. Domain has zero external packages.
 
 **2. CQRS — Present ✅**
-Commands (write) and Queries (read) in separate namespaces. All query handlers use `AsNoTracking()` + DTO projection via `Select()`. MediatR pipeline: `ValidationBehavior` → `LoggingBehavior` → handler.
+Every mutation is a `IRequest<Result<T>>` Command; every read is a `IRequest<T>` Query. One handler file per request. Dispatched via MediatR.
 
 **3. Dependency Injection — Present ✅**
-`Program.cs` has 4 lines delegating to extension methods — zero inline registrations. All handlers receive interfaces, never concrete types. Auto-discovery via assembly scanning.
+All services registered in `InfrastructureServiceExtensions` and `ServiceCollectionExtensions`. Interfaces for every boundary.
 
 **4. Middleware Pattern — Present ✅**
-`ExceptionHandlerMiddleware` (domain exceptions → RFC 9457 ProblemDetails) and `SecurityHeadersMiddleware`. Correct pipeline order: exception handler → security headers → CORS → auth.
+`ExceptionHandlerMiddleware`, `SecurityHeadersMiddleware`, `CorrelationIdMiddleware`. All wired via `IApplicationBuilder` extension in `ApplicationBuilderExtensions`.
 
-**5. Repository Pattern — Absent (to be implemented)**
-No `IRepository<T>` exists. Handlers access data directly through `IApplicationDbContext`. User preference: implement combined Repository + Unit of Work pattern (Task #12).
+**5. Repository Pattern — Present ✅**
+`IRepository<T>` generic interface with `GetByIdAsync`, `Add`, `Update`, `Delete`, `AsQueryable`. EF Core implementation in `EfRepository<T>`.
+Key files: `src/Application/Interfaces/IRepository.cs`, `src/Infrastructure/Persistence/EfRepository.cs`
 
-**6. Unit of Work — Partial (to be made explicit)**
-EF Core `DbContext` acts as the implicit unit of work. `IApplicationDbContext.SaveChangesAsync()` is the commit point. No explicit `IUnitOfWork` interface. User preference: explicit `IUnitOfWork` with typed repositories.
+**6. Unit of Work — Present ✅**
+`IUnitOfWork` exposes typed repositories (`Users`, `Roles`, `Products`, etc.) and `SaveChangesAsync`. `EfUnitOfWork` wraps `ApplicationDbContext`.
+Key files: `src/Application/Interfaces/IUnitOfWork.cs`, `src/Infrastructure/Persistence/EfUnitOfWork.cs`
 
-**7. Options Pattern — Absent**
-Raw `IConfiguration` string-key reads. No strongly-typed options classes. (Backlog Task #2 — highest priority.)
+**7. Options Pattern — Present ✅**
+Strongly-typed options classes bound via `services.Configure<T>()`. See Item 2 above.
 
-**8. Result Pattern — Absent**
-No `Result<T>` or discriminated union type. Errors signaled exclusively via exceptions. Handlers return raw DTOs.
+**8. Result Pattern — Present ✅**
+`Result<T>` / `Result` discriminated unions. Implicit operators from `T` and `Error` keep handler code concise. `ResultExtensions` maps results to HTTP responses in Minimal API endpoints.
+Key files: `src/Application/Common/Results/`, `src/Api/Extensions/ResultExtensions.cs`
 
-**9. Strategy Pattern — Partial**
-`IPasswordHasher`, `ITokenService`, `IAzureAdTokenValidator` are strategy contracts by design. Each has only one concrete implementation — no runtime strategy selection yet.
+**9. Strategy Pattern — Present ✅**
+`IEmailService` has two implementations (`SmtpEmailService`, `LoggingEmailService`) swapped by environment. `IFileStorageService` has `LocalDiskFileStorageService` with a clear seam for cloud storage.
 
-**10. Factory Pattern — Partial**
-Only `ApplicationDbContextFactory` (EF Core design-time tooling hook) exists. No domain-level entity factories.
+**10. Factory Pattern — Present ✅**
+`IHttpClientFactory` used internally by `HttpApiClient`. `ApplicationDbContext` registered as a factory (scoped lifetime) so each request gets its own context.
 
 **11. Adapter Pattern — Present ✅**
-Four adapters: `IApplicationDbContext` (EF Core), `IDateTimeService` (clock), `ICurrentUserService` (ClaimsPrincipal), `IAzureAdTokenValidator` (Microsoft.IdentityModel OIDC).
+`HttpApiClient` adapts `HttpClient` (low-level) to the `IHttpApiClient` domain interface. `AzureAdTokenValidator` adapts the Microsoft.IdentityModel library.
 
 **12. Pipeline / Chain of Responsibility — Present ✅**
-`ValidationBehavior` → `LoggingBehavior` → handler. Validation runs all validators in parallel and short-circuits on failure. Both registered as open generic behaviors via `AddOpenBehavior`.
+MediatR pipeline behaviors: `ValidationBehavior<T>` (runs FluentValidation) and `LoggingBehavior<T>` (logs request + duration). Ordered via DI registration.
 
 ---
 
-## Part 3: Backlog (Full List)
+## Part 3: What Remains
 
-| Task # | Item | Category | Priority Tier |
-|--------|------|----------|---------------|
-| #2 | Configuration / Options Pattern | Pattern | **Tier 1** |
-| #1 | Correlation ID / Request Tracing | Feature | **Tier 1** |
-| #11 | Sensitive Data Masking | Feature | **Tier 1** |
-| #12 | Repository + Unit of Work | Pattern | **Tier 2** |
-| #13 | Result Pattern | Pattern | **Tier 2** |
-| #4 | Pagination Filtering + Sorting | Feature | **Tier 3** |
-| #3 | Audit Trail | Feature | **Tier 3** |
-| #8 | External API Client Wrapper | Feature | **Tier 3** |
-| #5 | Caching Abstraction | Feature | **Tier 3** |
-| #15 | Factory Pattern | Pattern | **Tier 4** |
-| #14 | Strategy Pattern | Pattern | **Tier 4** |
-| #6 | Email / Notification Service | Feature | **Tier 4** |
-| #7 | File Storage Abstraction | Feature | **Tier 4** |
-| #9 | Background Job Support | Feature | **Tier 4** |
-| #10 | Feature Flags | Feature | **Tier 4** |
+### Genuine gaps on this branch
+
+| Priority | Item | Effort | Notes |
+|----------|------|--------|-------|
+| Low | Background Job Support | Large | Hangfire or Quartz.NET; no pressing feature need |
+| Low | Feature Flags | Small | `Microsoft.FeatureManagement` NuGet; config-only |
+
+### Items NOT yet merged to `develop` / `origin`
+This entire `feat/delete-product` local branch (15 commits) is unpushed. All the features above plus the Products CRUD, Result Pattern, and all new services need to be PR'd to `develop`.
 
 ---
 
-## Part 4: Priority Rationale
+## Part 4: Next Actions
 
-### Tier 1 — Quick Wins (Low effort, High value)
+Given the current branch state, the recommended next steps in order:
 
-| Priority | Task | Effort | Reason |
-|----------|------|--------|--------|
-| 1st | Options Pattern (#2) | ~2h | Fixes raw string config reads — security smell. Unblocks Strategy Pattern. |
-| 2nd | Correlation ID (#1) | ~1h | Single middleware + Serilog enricher. Every log line gets a trace ID. |
-| 3rd | Sensitive Data Masking (#11) | ~1h | Single Serilog destructuring policy. Cheap security insurance. |
-
-### Tier 2 — Foundational Refactors (Critical, do early)
-
-| Priority | Task | Effort | Reason |
-|----------|------|--------|--------|
-| 4th | Repository + Unit of Work (#12) | ~6-8h | User preference. Affects every handler. Harder to retrofit later. |
-| 5th | Result Pattern (#13) | ~4-6h | Changes all handler return types. Do before building more endpoints. |
-
-### Tier 3 — Feature Completeness
-
-| Priority | Task | Effort | Reason |
-|----------|------|--------|--------|
-| 6th | Pagination Filtering + Sorting (#4) | ~2h | Direct API/frontend value. |
-| 7th | Audit Trail (#3) | ~3-4h | Compliance — who changed what. |
-| 8th | External API Client Wrapper (#8) | ~1-2h | IHttpClientFactory correctness. |
-| 9th | Caching Abstraction (#5) | ~2-3h | Performance foundation. |
-
-### Tier 4 — Defer
-
-| Priority | Task | Dependency |
-|----------|------|-----------|
-| 10th | Factory Pattern (#15) | After Repository + Unit of Work |
-| 11th | Strategy Pattern (#14) | After Options Pattern |
-| 12th | Email Service (#6) | Phase 2+ |
-| 13th | File Storage (#7) | Phase 2+ |
-| 14th | Background Jobs (#9) | Phase 2+ |
-| 15th | Feature Flags (#10) | Lowest urgency |
-
-### Key Dependencies
-```
-Options Pattern (#2)
-  └── Strategy Pattern (#14)
-
-Repository + Unit of Work (#12)
-  └── Factory Pattern (#15)
-
-Result Pattern (#13)
-  └── all future feature endpoints
-```
-
----
-
-*Generated by Claude Code — DotNetStarterKitv2 session 2026-03-16*
+1. **Open PR: `feat/delete-product` → `develop`** — all 15 commits, after passing CI
+2. **Frontend Products feature** — `features/products/` slice with CRUD pages, hooks, tests
+3. **Background Jobs** (optional) — only if a specific use case is identified
+4. **Feature Flags** (optional) — `Microsoft.FeatureManagement` for gradual rollouts
