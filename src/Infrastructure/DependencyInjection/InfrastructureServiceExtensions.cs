@@ -123,6 +123,15 @@ public static class InfrastructureServiceExtensions
             services.AddScoped<IEmailService, LoggingEmailService>();
         }
 
+        // ── File storage service ──────────────────────────────────────────────────
+        // Always bound — BasePath defaults to "uploads" relative to the working dir.
+        // Swap to a cloud implementation (AzureBlobStorageService, S3StorageService)
+        // by changing the registration below; no Application layer changes needed.
+        services.AddOptions<StorageOptions>()
+            .BindConfiguration("Storage");
+
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
         // ── Azure AD token validator (conditional) ────────────────────────────────
         // Only registered when TenantId, ClientId, and SpaClientId are all configured.
         // If any are absent, Azure AD login is disabled and only local JWT auth works.
