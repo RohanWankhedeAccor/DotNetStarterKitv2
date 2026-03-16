@@ -51,12 +51,17 @@ public sealed class ExceptionHandlerMiddleware
     {
         context.Response.ContentType = "application/problem+json";
 
+        // Read correlation ID assigned by CorrelationIdMiddleware (runs inside this handler).
+        var correlationId = context.Items[CorrelationIdMiddleware.ItemsKey] as string
+            ?? context.TraceIdentifier;
+
         var problemDetails = new ProblemDetails
         {
             Instance = context.Request.Path,
             Extensions = new Dictionary<string, object?>
             {
-                { "traceId", Activity.Current?.Id ?? context.TraceIdentifier }
+                { "traceId", Activity.Current?.Id ?? context.TraceIdentifier },
+                { "correlationId", correlationId }
             }
         };
 
