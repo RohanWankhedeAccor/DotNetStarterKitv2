@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Features.Users.Dtos;
 using MediatR;
 
@@ -18,6 +19,7 @@ public class CreateUserCommand : IRequest<UserDto>
     /// <summary>Gets or sets the last name for the new user.</summary>
     public required string LastName { get; set; }
 
-    /// <summary>Gets or sets the plain-text password (will be hashed).</summary>
+    /// <summary>Gets or sets the plain-text password (will be hashed). Masked in logs.</summary>
+    [Sensitive]
     public required string Password { get; set; }
 }

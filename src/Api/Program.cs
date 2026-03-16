@@ -1,4 +1,5 @@
 using Api.Extensions;
+using Api.Logging;
 using Application;
 using Application.Interfaces;
 using Infrastructure.DependencyInjection;
@@ -26,7 +27,8 @@ try
     // that occur when WebApplicationFactory's internal BuildServiceProvider() resolves
     // ILogger during integration tests — causing a double-freeze on the same instance.
     builder.Services.AddSerilog((services, config) =>
-        config.ReadFrom.Configuration(builder.Configuration)
+        config.Destructure.With<SensitiveDataDestructuringPolicy>()
+              .ReadFrom.Configuration(builder.Configuration)
               .ReadFrom.Services(services)
               .Enrich.FromLogContext()
               .Enrich.WithMachineName()

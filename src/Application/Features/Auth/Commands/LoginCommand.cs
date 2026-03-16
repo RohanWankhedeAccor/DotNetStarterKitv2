@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Features.Auth.Dtos;
 using MediatR;
 
@@ -7,4 +8,4 @@ namespace Application.Features.Auth.Commands;
 /// Command to authenticate a user and return a JWT bearer token.
 /// Uses the user's email and password to verify identity.
 /// </summary>
-public record LoginCommand(string Email, string Password) : IRequest<LoginResponse>;
+public record LoginCommand(string Email, [property: Sensitive] string Password) : IRequest<LoginResponse>;
