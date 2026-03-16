@@ -13,21 +13,21 @@ namespace Application.Features.Users.Queries;
 /// </summary>
 public sealed class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GetUserByIdQueryHandler"/> class.
     /// </summary>
-    /// <param name="context">The application database context.</param>
-    public GetUserByIdQueryHandler(IApplicationDbContext context)
+    /// <param name="unitOfWork">The Unit of Work providing repository access.</param>
+    public GetUserByIdQueryHandler(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc />
     public async Task<UserDto> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
     {
-        var user = await _context.Users
+        var user = await _unitOfWork.Users.AsQueryable()
             .AsNoTracking()
             .Where(u => u.Id == request.Id)
             .Select(u => new UserDto

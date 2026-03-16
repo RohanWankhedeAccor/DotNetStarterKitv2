@@ -16,7 +16,7 @@ namespace Application.Features.Auth.Commands;
 /// </summary>
 internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginCommand, LoginResponse>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IAzureAdTokenValidator _azureAdTokenValidator;
     private readonly ITokenService _tokenService;
     private readonly ICurrentUserService _currentUserService;
@@ -25,12 +25,12 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
     /// Initializes a new instance of the <see cref="AzureLoginCommandHandler"/> class.
     /// </summary>
     public AzureLoginCommandHandler(
-        IApplicationDbContext context,
+        IUnitOfWork unitOfWork,
         IAzureAdTokenValidator azureAdTokenValidator,
         ITokenService tokenService,
         ICurrentUserService currentUserService)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _azureAdTokenValidator = azureAdTokenValidator;
         _tokenService = tokenService;
         _currentUserService = currentUserService;
@@ -72,11 +72,11 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
         // 3. Find or create user in database.
         // Look up by AzureAdObjectId first; fall back to email so that an existing
         // local account with the same address is adopted rather than duplicated.
-        var user = await _context.Users
+        var user = await _unitOfWork.Users.AsQueryable()
                        .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
                            .ThenInclude(r => r!.RolePermissions).ThenInclude(rp => rp.Permission)
                        .FirstOrDefaultAsync(u => u.AzureAdObjectId == azureAdObjectId, cancellationToken)
-                   ?? await _context.Users
+                   ?? await _unitOfWork.Users.AsQueryable()
                        .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
                            .ThenInclude(r => r!.RolePermissions).ThenInclude(rp => rp.Permission)
                        .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
@@ -87,15 +87,15 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
             user.ProvisionAzureAd(azureAdObjectId);
             user.Activate();
 
-            _context.Users.Add(user);
+            _unitOfWork.Users.Add(user);
             try
             {
-                await _context.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
             catch (DbUpdateException)
             {
                 // Concurrent request already inserted this user — re-query by email.
-                user = await _context.Users
+                user = await _unitOfWork.Users.AsQueryable()
                            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
                            .FirstOrDefaultAsync(u => u.Email == email, cancellationToken)
                        ?? throw new AzureAdTokenValidationException(
@@ -127,7 +127,7 @@ internal sealed class AzureLoginCommandHandler : IRequestHandler<AzureLoginComma
 
             if (hasChanges)
             {
-                await _context.SaveChangesAsync(cancellationToken);
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
             }
         }
 

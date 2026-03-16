@@ -81,6 +81,11 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IApplicationDbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
 
+        // Unit of Work + generic Repository — the preferred abstraction for handlers.
+        // EfUnitOfWork wraps the same scoped ApplicationDbContext, so all repositories
+        // within a single request share one ChangeTracker and one SaveChangesAsync call.
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+
         // ── Identity / utility services ───────────────────────────────────────────
 
         // Scoped — one instance per HTTP request.

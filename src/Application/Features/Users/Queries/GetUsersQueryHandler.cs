@@ -13,15 +13,15 @@ namespace Application.Features.Users.Queries;
 /// </summary>
 public sealed class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PagedResponse<UserDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GetUsersQueryHandler"/> class.
     /// </summary>
-    /// <param name="context">The application database context.</param>
-    public GetUsersQueryHandler(IApplicationDbContext context)
+    /// <param name="unitOfWork">The Unit of Work providing repository access.</param>
+    public GetUsersQueryHandler(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc />
@@ -29,11 +29,11 @@ public sealed class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PagedR
     {
         var offset = (request.PageNumber - 1) * request.PageSize;
 
-        var totalCount = await _context.Users
+        var totalCount = await _unitOfWork.Users.AsQueryable()
             .AsNoTracking()
             .CountAsync(cancellationToken);
 
-        var users = await _context.Users
+        var users = await _unitOfWork.Users.AsQueryable()
             .AsNoTracking()
             .OrderBy(u => u.Email)
             .Skip(offset)

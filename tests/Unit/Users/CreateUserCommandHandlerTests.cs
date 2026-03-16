@@ -12,7 +12,8 @@ namespace Unit.Users;
 
 public class CreateUserCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context = Substitute.For<IApplicationDbContext>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IRepository<User> _usersRepo = Substitute.For<IRepository<User>>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly IMapper _mapper;
     private readonly CreateUserCommandHandler _handler;
@@ -27,17 +28,19 @@ public class CreateUserCommandHandlerTests
                .ForMember(d => d.LastName, o => o.MapFrom(s => s.LastName)));
         _mapper = config.CreateMapper();
 
+        _unitOfWork.Users.Returns(_usersRepo);
         _passwordHasher.HashPassword(Arg.Any<string>()).Returns("hashed_password");
-        _context.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 
-        _handler = new CreateUserCommandHandler(_context, _mapper, _passwordHasher);
+        _handler = new CreateUserCommandHandler(_unitOfWork, _mapper, _passwordHasher);
     }
 
     [Fact]
     public async Task Handle_WithUniqueEmail_CreatesUserAndReturnsDto()
     {
-        var usersSet = DbSetMockHelper.Create<User>([]);
-        _context.Users.Returns(usersSet);
+        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
+        // thread-local state issues when configuring IRepository<T>.Query.
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
 
         var result = await _handler.Handle(
             new CreateUserCommand { Email = "new@example.com", FirstName = "New", LastName = "User", Password = "password123" },
@@ -46,16 +49,15 @@ public class CreateUserCommandHandlerTests
         result.Email.Should().Be("new@example.com");
         result.FirstName.Should().Be("New");
         result.LastName.Should().Be("User");
-        _context.Users.Received(1).Add(Arg.Any<User>());
-        await _context.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        _usersRepo.Received(1).Add(Arg.Any<User>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_WithDuplicateEmail_ThrowsConflictException()
     {
         var existing = new User("taken@example.com", "Existing", "User", "hash");
-        var usersSet = DbSetMockHelper.Create([existing]);
-        _context.Users.Returns(usersSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([existing]));
 
         var act = () => _handler.Handle(
             new CreateUserCommand { Email = "taken@example.com", FirstName = "Dupe", LastName = "User", Password = "password123" },
@@ -68,8 +70,7 @@ public class CreateUserCommandHandlerTests
     [Fact]
     public async Task Handle_HashesPasswordBeforeSaving()
     {
-        var usersSet = DbSetMockHelper.Create<User>([]);
-        _context.Users.Returns(usersSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
 
         await _handler.Handle(
             new CreateUserCommand { Email = "hash@example.com", FirstName = "Hashed", LastName = "User", Password = "plaintext" },

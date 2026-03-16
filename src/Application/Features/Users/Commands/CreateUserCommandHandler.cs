@@ -17,19 +17,19 @@ namespace Application.Features.Users.Commands;
 /// </summary>
 public sealed class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserDto>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
     private readonly IPasswordHasher _passwordHasher;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CreateUserCommandHandler"/> class.
     /// </summary>
-    /// <param name="context">The application database context.</param>
+    /// <param name="unitOfWork">The Unit of Work coordinating repositories and persistence.</param>
     /// <param name="mapper">The AutoMapper instance.</param>
     /// <param name="passwordHasher">Service for password hashing.</param>
-    public CreateUserCommandHandler(IApplicationDbContext context, IMapper mapper, IPasswordHasher passwordHasher)
+    public CreateUserCommandHandler(IUnitOfWork unitOfWork, IMapper mapper, IPasswordHasher passwordHasher)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
         _mapper = mapper;
         _passwordHasher = passwordHasher;
     }
@@ -38,7 +38,7 @@ public sealed class CreateUserCommandHandler : IRequestHandler<CreateUserCommand
     public async Task<UserDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
         // Check for email uniqueness (soft-delete aware: ignores deleted users).
-        var emailExists = await _context.Users
+        var emailExists = await _unitOfWork.Users.AsQueryable()
             .AsNoTracking()
             .AnyAsync(u => u.Email == request.Email, cancellationToken);
 
@@ -60,9 +60,9 @@ public sealed class CreateUserCommandHandler : IRequestHandler<CreateUserCommand
         // Phase 2: Require email confirmation before activating.
         user.Activate();
 
-        // Add to DbSet and persist.
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync(cancellationToken);
+        // Add to repository and persist via Unit of Work.
+        _unitOfWork.Users.Add(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         // Return the created user as a DTO.
         return _mapper.Map<UserDto>(user);

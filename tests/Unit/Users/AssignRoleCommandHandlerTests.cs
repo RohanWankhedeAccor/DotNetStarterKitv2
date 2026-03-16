@@ -14,12 +14,19 @@ namespace Unit.Users;
 
 public class AssignRoleCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context = Substitute.For<IApplicationDbContext>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IRepository<User> _usersRepo = Substitute.For<IRepository<User>>();
+    private readonly IRepository<Role> _rolesRepo = Substitute.For<IRepository<Role>>();
+    private readonly IRepository<UserRole> _userRolesRepo = Substitute.For<IRepository<UserRole>>();
     private readonly AssignRoleCommandHandler _handler;
 
     public AssignRoleCommandHandlerTests()
     {
-        _handler = new AssignRoleCommandHandler(_context);
+        _unitOfWork.Users.Returns(_usersRepo);
+        _unitOfWork.Roles.Returns(_rolesRepo);
+        _unitOfWork.UserRoles.Returns(_userRolesRepo);
+
+        _handler = new AssignRoleCommandHandler(_unitOfWork);
     }
 
     [Fact]
@@ -28,31 +35,27 @@ public class AssignRoleCommandHandlerTests
         var user = CreateActiveUser("test@example.com");
         var role = new Role("Editor", "Can view and create users.");
 
-        var usersSet = DbSetMockHelper.Create([user]);
-        var rolesSet = DbSetMockHelper.Create([role]);
-        var userRolesSet = DbSetMockHelper.Create<UserRole>([]);
-        _context.Users.Returns(usersSet);
-        _context.Roles.Returns(rolesSet);
-        _context.UserRoles.Returns(userRolesSet);
-        _context.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
+        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
+        // thread-local state issues when configuring IRepository<T>.Query.
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
+        _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([role]));
+        _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "Editor" }, default);
 
         result.Should().Be(MediatRUnit.Value);
-        _context.UserRoles.Received(1).Add(Arg.Any<UserRole>());
-        await _context.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        _userRolesRepo.Received(1).Add(Arg.Any<UserRole>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_UserNotFound_ThrowsNotFoundException()
     {
-        var usersSet = DbSetMockHelper.Create<User>([]);
-        var rolesSet = DbSetMockHelper.Create<Role>([]);
-        var userRolesSet = DbSetMockHelper.Create<UserRole>([]);
-        _context.Users.Returns(usersSet);
-        _context.Roles.Returns(rolesSet);
-        _context.UserRoles.Returns(userRolesSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
+        _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([]));
+        _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
 
         var act = () => _handler.Handle(
             new AssignRoleCommand { UserId = Guid.NewGuid(), RoleName = "Editor" }, default);
@@ -65,12 +68,9 @@ public class AssignRoleCommandHandlerTests
     {
         var user = CreateActiveUser("test@example.com");
 
-        var usersSet = DbSetMockHelper.Create([user]);
-        var rolesSet = DbSetMockHelper.Create<Role>([]);
-        var userRolesSet = DbSetMockHelper.Create<UserRole>([]);
-        _context.Users.Returns(usersSet);
-        _context.Roles.Returns(rolesSet);
-        _context.UserRoles.Returns(userRolesSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
+        _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([]));
+        _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
 
         var act = () => _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "NonExistent" }, default);
@@ -85,19 +85,16 @@ public class AssignRoleCommandHandlerTests
         var role = new Role("Editor", "Can view and create users.");
         var existingAssignment = new UserRole(user.Id, role.Id);
 
-        var usersSet = DbSetMockHelper.Create([user]);
-        var rolesSet = DbSetMockHelper.Create([role]);
-        var userRolesSet = DbSetMockHelper.Create([existingAssignment]);
-        _context.Users.Returns(usersSet);
-        _context.Roles.Returns(rolesSet);
-        _context.UserRoles.Returns(userRolesSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
+        _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([role]));
+        _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([existingAssignment]));
 
         var result = await _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "Editor" }, default);
 
         result.Should().Be(MediatRUnit.Value);
-        _context.UserRoles.DidNotReceive().Add(Arg.Any<UserRole>());
-        await _context.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        _userRolesRepo.DidNotReceive().Add(Arg.Any<UserRole>());
+        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     private static User CreateActiveUser(string email)

@@ -10,14 +10,17 @@ namespace Unit.Auth;
 
 public class LoginCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context = Substitute.For<IApplicationDbContext>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IRepository<User> _usersRepo = Substitute.For<IRepository<User>>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
     private readonly ITokenService _tokenService = Substitute.For<ITokenService>();
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
-        _handler = new LoginCommandHandler(_context, _passwordHasher, _tokenService);
+        _unitOfWork.Users.Returns(_usersRepo);
+
+        _handler = new LoginCommandHandler(_unitOfWork, _passwordHasher, _tokenService);
         _tokenService.ExpirationMinutes.Returns(60);
         _tokenService.GenerateToken(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -29,8 +32,9 @@ public class LoginCommandHandlerTests
     public async Task Handle_WithValidCredentials_ReturnsLoginResponse()
     {
         var user = CreateActiveUser("user@example.com", "hashed_pw");
-        var usersSet = DbSetMockHelper.Create([user]);
-        _context.Users.Returns(usersSet);
+        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
+        // thread-local state issues when configuring IRepository<T>.Query.
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
         _passwordHasher.VerifyPassword("password123", "hashed_pw").Returns(true);
 
         var result = await _handler.Handle(new LoginCommand("user@example.com", "password123"), default);
@@ -43,8 +47,7 @@ public class LoginCommandHandlerTests
     [Fact]
     public async Task Handle_WithNonExistentEmail_ThrowsNotFoundException()
     {
-        var usersSet = DbSetMockHelper.Create<User>([]);
-        _context.Users.Returns(usersSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
 
         var act = () => _handler.Handle(new LoginCommand("ghost@example.com", "pw"), default);
 
@@ -55,8 +58,7 @@ public class LoginCommandHandlerTests
     public async Task Handle_WithWrongPassword_ThrowsUnauthorizedException()
     {
         var user = CreateActiveUser("user@example.com", "hashed_pw");
-        var usersSet = DbSetMockHelper.Create([user]);
-        _context.Users.Returns(usersSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
         _passwordHasher.VerifyPassword("wrongpass", "hashed_pw").Returns(false);
 
         var act = () => _handler.Handle(new LoginCommand("user@example.com", "wrongpass"), default);
@@ -70,8 +72,7 @@ public class LoginCommandHandlerTests
     {
         var user = CreateActiveUser("user@example.com", "hashed_pw");
         user.Deactivate();
-        var usersSet = DbSetMockHelper.Create([user]);
-        _context.Users.Returns(usersSet);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
         _passwordHasher.VerifyPassword("password123", "hashed_pw").Returns(true);
 
         var act = () => _handler.Handle(new LoginCommand("user@example.com", "password123"), default);

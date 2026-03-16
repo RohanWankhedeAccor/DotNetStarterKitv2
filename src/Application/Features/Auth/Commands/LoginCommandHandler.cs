@@ -16,7 +16,7 @@ namespace Application.Features.Auth.Commands;
 /// </summary>
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
 
@@ -24,11 +24,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     /// Initializes a new instance of <see cref="LoginCommandHandler"/>.
     /// </summary>
     public LoginCommandHandler(
-        IApplicationDbContext dbContext,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         ITokenService tokenService)
     {
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
     }
@@ -42,7 +42,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         // Load user with roles and their permissions in a single round-trip.
-        var user = await _dbContext.Users
+        var user = await _unitOfWork.Users.AsQueryable()
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
                     .ThenInclude(r => r!.RolePermissions)
