@@ -132,6 +132,14 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+        // ── External HTTP API client ───────────────────────────────────────────
+        // AddHttpClient registers a typed client backed by IHttpClientFactory —
+        // correct lifetime management, DNS refresh, and connection pooling.
+        // CorrelationIdDelegatingHandler is transient (per-request pipeline).
+        services.AddTransient<CorrelationIdDelegatingHandler>();
+        services.AddHttpClient<IHttpApiClient, HttpApiClient>()
+                .AddHttpMessageHandler<CorrelationIdDelegatingHandler>();
+
         // ── Azure AD token validator (conditional) ────────────────────────────────
         // Only registered when TenantId, ClientId, and SpaClientId are all configured.
         // If any are absent, Azure AD login is disabled and only local JWT auth works.

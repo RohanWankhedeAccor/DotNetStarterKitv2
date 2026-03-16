@@ -15,6 +15,7 @@ namespace Api.Middleware;
 /// - <see cref="Domain.Exceptions.AzureAdTokenValidationException"/> → 401 (Phase 12)
 /// - <see cref="ConflictException"/> → 409
 /// - <see cref="ForbiddenException"/> → 403
+/// - <see cref="ExternalApiException"/> → 502
 /// - <see cref="FluentValidation.ValidationException"/> → 400
 /// - All other exceptions → 500
 /// </summary>
@@ -100,6 +101,13 @@ public sealed class ExceptionHandlerMiddleware
                 problemDetails.Status = StatusCodes.Status403Forbidden;
                 problemDetails.Title = "Forbidden";
                 problemDetails.Detail = forbiddenEx.Message;
+                break;
+
+            case ExternalApiException externalEx:
+                context.Response.StatusCode = StatusCodes.Status502BadGateway;
+                problemDetails.Status = StatusCodes.Status502BadGateway;
+                problemDetails.Title = "Bad Gateway";
+                problemDetails.Detail = $"An upstream API call failed with HTTP {externalEx.StatusCode}.";
                 break;
 
             case FluentValidation.ValidationException validationEx:
