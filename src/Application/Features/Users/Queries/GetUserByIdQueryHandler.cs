@@ -1,6 +1,7 @@
+using Application.Common.Results;
 using Application.Features.Users.Dtos;
 using Application.Interfaces;
-using Domain.Exceptions;
+using Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,25 +10,22 @@ namespace Application.Features.Users.Queries;
 /// <summary>
 /// Handler for <see cref="GetUserByIdQuery"/>. Retrieves a single user by ID including
 /// their assigned roles. Uses direct <c>Select()</c> projection for efficiency.
-/// Throws <see cref="NotFoundException"/> if the user does not exist.
+/// Returns <see cref="Error.NotFound"/> if the user does not exist.
 /// </summary>
-public sealed class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto>
+public sealed class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, Result<UserDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="GetUserByIdQueryHandler"/> class.
-    /// </summary>
-    /// <param name="context">The application database context.</param>
-    public GetUserByIdQueryHandler(IApplicationDbContext context)
+    /// <summary>Initializes a new instance of the <see cref="GetUserByIdQueryHandler"/> class.</summary>
+    public GetUserByIdQueryHandler(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc />
-    public async Task<UserDto> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<UserDto>> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
     {
-        var user = await _context.Users
+        var user = await _unitOfWork.Users.AsQueryable()
             .AsNoTracking()
             .Where(u => u.Id == request.Id)
             .Select(u => new UserDto
@@ -50,7 +48,7 @@ public sealed class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, 
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user is null)
-            throw new NotFoundException(nameof(Domain.Entities.User), request.Id);
+            return Error.NotFound(nameof(User), request.Id);
 
         return user;
     }

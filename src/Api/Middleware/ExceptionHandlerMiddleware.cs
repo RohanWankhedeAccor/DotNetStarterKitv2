@@ -15,6 +15,7 @@ namespace Api.Middleware;
 /// - <see cref="Domain.Exceptions.AzureAdTokenValidationException"/> → 401 (Phase 12)
 /// - <see cref="ConflictException"/> → 409
 /// - <see cref="ForbiddenException"/> → 403
+/// - <see cref="ExternalApiException"/> → 502
 /// - <see cref="FluentValidation.ValidationException"/> → 400
 /// - All other exceptions → 500
 /// </summary>
@@ -51,12 +52,17 @@ public sealed class ExceptionHandlerMiddleware
     {
         context.Response.ContentType = "application/problem+json";
 
+        // Read correlation ID assigned by CorrelationIdMiddleware (runs inside this handler).
+        var correlationId = context.Items[CorrelationIdMiddleware.ItemsKey] as string
+            ?? context.TraceIdentifier;
+
         var problemDetails = new ProblemDetails
         {
             Instance = context.Request.Path,
             Extensions = new Dictionary<string, object?>
             {
-                { "traceId", Activity.Current?.Id ?? context.TraceIdentifier }
+                { "traceId", Activity.Current?.Id ?? context.TraceIdentifier },
+                { "correlationId", correlationId }
             }
         };
 
@@ -95,6 +101,13 @@ public sealed class ExceptionHandlerMiddleware
                 problemDetails.Status = StatusCodes.Status403Forbidden;
                 problemDetails.Title = "Forbidden";
                 problemDetails.Detail = forbiddenEx.Message;
+                break;
+
+            case ExternalApiException externalEx:
+                context.Response.StatusCode = StatusCodes.Status502BadGateway;
+                problemDetails.Status = StatusCodes.Status502BadGateway;
+                problemDetails.Title = "Bad Gateway";
+                problemDetails.Detail = $"An upstream API call failed with HTTP {externalEx.StatusCode}.";
                 break;
 
             case FluentValidation.ValidationException validationEx:

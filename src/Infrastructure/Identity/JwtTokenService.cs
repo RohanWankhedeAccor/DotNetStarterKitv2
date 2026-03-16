@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Application.Interfaces;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Infrastructure.Identity;
@@ -9,6 +11,7 @@ namespace Infrastructure.Identity;
 /// <summary>
 /// Service for generating and validating JWT bearer tokens.
 /// Tokens include user ID, email, roles, and fine-grained permission claims.
+/// Configuration is supplied via <see cref="JwtOptions"/> (bound from the "Jwt" config section).
 /// </summary>
 public class JwtTokenService : ITokenService
 {
@@ -20,24 +23,16 @@ public class JwtTokenService : ITokenService
     private readonly JwtSecurityTokenHandler _tokenHandler = new();
 
     /// <summary>
-    /// Initializes a new instance of <see cref="JwtTokenService"/>.
+    /// Initializes a new instance of <see cref="JwtTokenService"/> using strongly-typed options.
     /// </summary>
-    /// <param name="secretKey">JWT signing key (must be at least 32 chars for HS256)</param>
-    /// <param name="issuer">Token issuer (e.g., "DotNetStarterKitv2")</param>
-    /// <param name="audience">Token audience (e.g., "DotNetStarterKitv2-App")</param>
-    /// <param name="expirationMinutes">Token validity duration in minutes (default: 60)</param>
-    public JwtTokenService(string secretKey, string issuer = "DotNetStarterKitv2",
-        string audience = "DotNetStarterKitv2-App", int expirationMinutes = 60)
+    /// <param name="options">JWT configuration bound from the "Jwt" appsettings section.</param>
+    public JwtTokenService(IOptions<JwtOptions> options)
     {
-        if (string.IsNullOrWhiteSpace(secretKey))
-            throw new ArgumentException("Secret key cannot be null or empty.", nameof(secretKey));
-        if (secretKey.Length < 32)
-            throw new ArgumentException("Secret key must be at least 32 characters long for HS256.", nameof(secretKey));
-
-        _secretKey = secretKey;
-        _issuer = issuer;
-        _audience = audience;
-        _expirationMinutes = expirationMinutes;
+        var jwt = options.Value;
+        _secretKey = jwt.SecretKey;
+        _issuer = jwt.Issuer;
+        _audience = jwt.Audience;
+        _expirationMinutes = jwt.ExpirationMinutes;
     }
 
     /// <inheritdoc />

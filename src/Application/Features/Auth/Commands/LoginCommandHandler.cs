@@ -1,9 +1,8 @@
-using Application.Features.Auth.Commands;
+using Application.Common.Results;
 using Application.Features.Auth.Dtos;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
-using Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,49 +11,46 @@ namespace Application.Features.Auth.Commands;
 /// <summary>
 /// Handles login requests by verifying credentials and issuing JWT tokens.
 /// Loads the user's roles and all permissions derived from those roles so that
-/// both role and permission claims are embedded in the token.
+/// both role and permission claims are embedded in the token. Returns a
+/// <c>NotFound</c> error for unknown email, or <c>Unauthorized</c> for bad
+/// credentials / inactive account.
 /// </summary>
-public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
+public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
 {
-    private readonly IApplicationDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ITokenService _tokenService;
 
-    /// <summary>
-    /// Initializes a new instance of <see cref="LoginCommandHandler"/>.
-    /// </summary>
+    /// <summary>Initializes a new instance of <see cref="LoginCommandHandler"/>.</summary>
     public LoginCommandHandler(
-        IApplicationDbContext dbContext,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         ITokenService tokenService)
     {
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
     }
 
-    /// <summary>
-    /// Executes the login command: verifies email/password and returns a JWT token
-    /// containing both role claims and fine-grained permission claims.
-    /// </summary>
-    /// <exception cref="NotFoundException">Thrown when user with given email is not found (HTTP 404)</exception>
-    /// <exception cref="UnauthorizedException">Thrown when password is invalid or user is not active (HTTP 401)</exception>
-    public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public async Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         // Load user with roles and their permissions in a single round-trip.
-        var user = await _dbContext.Users
+        var user = await _unitOfWork.Users.AsQueryable()
             .Include(u => u.UserRoles)
                 .ThenInclude(ur => ur.Role)
                     .ThenInclude(r => r!.RolePermissions)
                         .ThenInclude(rp => rp.Permission)
-            .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken)
-            ?? throw new NotFoundException(nameof(User), request.Email);
+            .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
+
+        if (user is null)
+            return Error.NotFound(nameof(User), request.Email);
 
         if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash ?? string.Empty))
-            throw new UnauthorizedException("Invalid email or password.");
+            return Error.Unauthorized("Invalid email or password.");
 
         if (user.Status != UserStatus.Active)
-            throw new UnauthorizedException($"User account is {user.Status.ToString().ToLowerInvariant()}. Please contact support.");
+            return Error.Unauthorized($"User account is {user.Status.ToString().ToLowerInvariant()}. Please contact support.");
 
         var roles = user.UserRoles
             .Where(ur => ur.Role != null)

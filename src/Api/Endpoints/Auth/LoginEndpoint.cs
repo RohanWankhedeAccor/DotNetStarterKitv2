@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Auth.Commands;
 using Application.Features.Auth.Dtos;
 using MediatR;
@@ -39,8 +40,12 @@ public static class LoginEndpoint
     {
         var command = new LoginCommand(request.Email, request.Password);
         var result = await mediator.Send(command, cancellationToken);
-        SetAuthCookie(httpContext, result.Token, result.ExpiresIn);
-        return Results.Ok(ToUserInfo(result));
+
+        return result.ToApiResult(response =>
+        {
+            SetAuthCookie(httpContext, response.Token, response.ExpiresIn);
+            return Results.Ok(ToUserInfo(response));
+        });
     }
 
     internal static void SetAuthCookie(HttpContext httpContext, string token, int expiresInSeconds)

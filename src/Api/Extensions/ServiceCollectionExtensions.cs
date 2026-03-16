@@ -1,4 +1,6 @@
+using Infrastructure.Options;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
@@ -15,34 +17,39 @@ public static class ServiceCollectionExtensions
     /// Registers API services: Swagger/OpenAPI, JSON serialization settings, CORS, and versioning.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The application configuration for reading JWT and other settings.</param>
+    /// <param name="configuration">The application configuration.</param>
     /// <returns>The service collection for fluent chaining.</returns>
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Register endpoints API explorer (required for minimal APIs + Swagger)
         services.AddEndpointsApiExplorer();
 
-        // Configure JWT bearer authentication
-        var jwtSecret = configuration["Jwt:SecretKey"] ?? "default-secret-key-change-in-production";
-        var jwtIssuer = configuration["Jwt:Issuer"] ?? "DotNetStarterKitv2";
-        var jwtAudience = configuration["Jwt:Audience"] ?? "DotNetStarterKitv2-App";
-
+        // Configure JWT bearer authentication.
+        // Token validation parameters are wired via IConfigureOptions<JwtBearerOptions>
+        // so they resolve IOptions<JwtOptions> from DI — no raw config string reads here.
         services
             .AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(options =>
+            .AddJwtBearer();
+
+        // DI-aware configuration for JwtBearerOptions — resolves IOptions<JwtOptions>
+        // at runtime so both the token service and the bearer middleware always use the
+        // same SecretKey/Issuer/Audience values from a single source of truth.
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtOptions>>((jwtBearerOptions, jwtOptions) =>
             {
-                options.TokenValidationParameters = new TokenValidationParameters
+                var jwt = jwtOptions.Value;
+                jwtBearerOptions.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey)),
                     ValidateIssuer = true,
-                    ValidIssuer = jwtIssuer,
+                    ValidIssuer = jwt.Issuer,
                     ValidateAudience = true,
-                    ValidAudience = jwtAudience,
+                    ValidAudience = jwt.Audience,
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
                 };
@@ -50,15 +57,13 @@ public static class ServiceCollectionExtensions
                 // Read token from HttpOnly cookie when present.
                 // Falls back to Authorization: Bearer header if cookie is absent
                 // (keeps integration tests that send the header working without changes).
-                options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+                jwtBearerOptions.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
                     {
                         var cookie = context.Request.Cookies["auth_token"];
                         if (!string.IsNullOrEmpty(cookie))
-                        {
                             context.Token = cookie;
-                        }
                         return Task.CompletedTask;
                     }
                 };
@@ -69,11 +74,14 @@ public static class ServiceCollectionExtensions
             // Claim-based policies keyed on the "permission" claim embedded in the JWT.
             // Endpoints use these policy names — not role names — so the authorization
             // contract is decoupled from the role catalogue.
-            options.AddPolicy("CanViewUsers",   p => p.RequireClaim("permission", "users.view"));
-            options.AddPolicy("CanCreateUser",  p => p.RequireClaim("permission", "users.create"));
-            options.AddPolicy("CanDeleteUser",  p => p.RequireClaim("permission", "users.delete"));
-            options.AddPolicy("CanAssignRoles", p => p.RequireClaim("permission", "roles.assign"));
-            options.AddPolicy("CanViewRoles",   p => p.RequireClaim("permission", "roles.view"));
+            options.AddPolicy("CanViewUsers",     p => p.RequireClaim("permission", "users.view"));
+            options.AddPolicy("CanCreateUser",    p => p.RequireClaim("permission", "users.create"));
+            options.AddPolicy("CanDeleteUser",    p => p.RequireClaim("permission", "users.delete"));
+            options.AddPolicy("CanAssignRoles",   p => p.RequireClaim("permission", "roles.assign"));
+            options.AddPolicy("CanViewRoles",     p => p.RequireClaim("permission", "roles.view"));
+            options.AddPolicy("CanViewProducts",  p => p.RequireClaim("permission", "products.view"));
+            options.AddPolicy("CanCreateProduct", p => p.RequireClaim("permission", "products.create"));
+            options.AddPolicy("CanDeleteProduct", p => p.RequireClaim("permission", "products.delete"));
         });
 
         // Configure Swagger/OpenAPI documentation

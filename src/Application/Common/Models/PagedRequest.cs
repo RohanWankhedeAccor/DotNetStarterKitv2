@@ -1,8 +1,13 @@
 namespace Application.Common.Models;
 
 /// <summary>
-/// Represents pagination parameters for querying paginated collections.
+/// Represents pagination and sorting parameters for querying paginated collections.
 /// Handlers clamp <see cref="PageSize"/> to a maximum of 100 to prevent resource exhaustion.
+///
+/// <para>
+/// Sorting is opt-in: when <see cref="SortBy"/> is <c>null</c> or empty, each handler
+/// falls back to its own default ordering (typically by a stable unique column).
+/// </para>
 /// </summary>
 public class PagedRequest
 {
@@ -27,4 +32,16 @@ public class PagedRequest
         get => _pageSize;
         set => _pageSize = Math.Max(1, Math.Min(value, MaxPageSize));
     }
+
+    /// <summary>
+    /// Gets or sets the field name to sort by.
+    /// Valid values are defined by each query handler. <c>null</c> uses the handler default.
+    /// </summary>
+    public string? SortBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to sort in descending order.
+    /// Only applied when <see cref="SortBy"/> is non-null.
+    /// </summary>
+    public bool SortDescending { get; set; }
 }
