@@ -30,6 +30,7 @@ internal sealed class EfUnitOfWork : IUnitOfWork
         Users = new Repository<User>(context);
         Roles = new Repository<Role>(context);
         UserRoles = new Repository<UserRole>(context);
+        Products = new Repository<Product>(context);
         Projects = new Repository<Project>(context);
         Permissions = new Repository<Permission>(context);
         RolePermissions = new Repository<RolePermission>(context);
@@ -43,6 +44,9 @@ internal sealed class EfUnitOfWork : IUnitOfWork
 
     /// <inheritdoc />
     public IRepository<UserRole> UserRoles { get; }
+
+    /// <inheritdoc />
+    public IRepository<Product> Products { get; }
 
     /// <inheritdoc />
     public IRepository<Project> Projects { get; }

@@ -1,4 +1,5 @@
 using Api.Endpoints.Auth;
+using Api.Endpoints.Products;
 using Api.Endpoints.Users;
 using Api.Middleware;
 using Serilog;
@@ -97,6 +98,12 @@ public static class ApplicationBuilderExtensions
         app.MapGetUserById();
         app.MapGetUsers();
         app.MapAssignRole();
+
+        // Product endpoints
+        app.MapCreateProduct();
+        app.MapGetProductById();
+        app.MapGetProducts();
+        app.MapDeleteProduct();
 
         // Health check endpoint
         app.MapHealthCheck();

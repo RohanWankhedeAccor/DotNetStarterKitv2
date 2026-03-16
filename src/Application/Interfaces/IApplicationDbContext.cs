@@ -33,6 +33,9 @@ public interface IApplicationDbContext
     /// <summary>Gets the <see cref="DbSet{RolePermission}"/> for querying and persisting role-permission assignments.</summary>
     DbSet<RolePermission> RolePermissions { get; }
 
+    /// <summary>Gets the <see cref="DbSet{Product}"/> for querying and persisting product records.</summary>
+    DbSet<Product> Products { get; }
+
     /// <summary>Gets the <see cref="DbSet{AuditLog}"/> for querying the audit trail.</summary>
     DbSet<AuditLog> AuditLogs { get; }
 

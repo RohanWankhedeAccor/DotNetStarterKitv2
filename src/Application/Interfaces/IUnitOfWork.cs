@@ -28,6 +28,9 @@ public interface IUnitOfWork
     /// <summary>Gets the repository for <see cref="UserRole"/> junction entities.</summary>
     IRepository<UserRole> UserRoles { get; }
 
+    /// <summary>Gets the repository for <see cref="Product"/> entities.</summary>
+    IRepository<Product> Products { get; }
+
     /// <summary>Gets the repository for <see cref="Project"/> entities.</summary>
     IRepository<Project> Projects { get; }
 

@@ -18,19 +18,22 @@ public static class DataSeeder
 
     private static readonly (string Name, string Description)[] PermissionCatalogue =
     [
-        ("users.view",   "View user list and user details"),
-        ("users.create", "Create new users"),
-        ("users.delete", "Soft-delete a user"),
-        ("roles.assign", "Assign or remove roles from a user"),
-        ("roles.view",   "View role list"),
+        ("users.view",      "View user list and user details"),
+        ("users.create",    "Create new users"),
+        ("users.delete",    "Soft-delete a user"),
+        ("roles.assign",    "Assign or remove roles from a user"),
+        ("roles.view",      "View role list"),
+        ("products.view",   "View product list and product details"),
+        ("products.create", "Create new products"),
+        ("products.delete", "Soft-delete a product"),
     ];
 
     // Role → permitted permission keys
     private static readonly Dictionary<string, string[]> RolePermissionMap = new()
     {
-        ["Administrator"] = ["users.view", "users.create", "users.delete", "roles.assign", "roles.view"],
-        ["Editor"]        = ["users.view", "users.create"],
-        ["Viewer"]        = ["users.view"],
+        ["Administrator"] = ["users.view", "users.create", "users.delete", "roles.assign", "roles.view", "products.view", "products.create", "products.delete"],
+        ["Editor"]        = ["users.view", "users.create", "products.view", "products.create"],
+        ["Viewer"]        = ["users.view", "products.view"],
     };
 
     // Demo user email → role name
@@ -127,17 +130,22 @@ public static class DataSeeder
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        if (await context.Permissions.IgnoreQueryFilters().AnyAsync(cancellationToken))
-            return;
-
         var now = DateTimeOffset.UtcNow;
-        var permissions = PermissionCatalogue
+
+        var existingNames = await context.Permissions.IgnoreQueryFilters()
+            .Select(p => p.Name)
+            .ToHashSetAsync(cancellationToken);
+
+        var missing = PermissionCatalogue
+            .Where(p => !existingNames.Contains(p.Name))
             .Select(p => CreateAuditedEntity(new Permission(p.Name, p.Description), now))
             .ToArray();
 
-        await context.Permissions.AddRangeAsync(permissions, cancellationToken);
+        if (missing.Length == 0) return;
+
+        await context.Permissions.AddRangeAsync(missing, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("[DataSeeder] Seeded {Count} permissions", permissions.Length);
+        logger.LogInformation("[DataSeeder] Seeded {Count} permissions", missing.Length);
     }
 
     private static async Task SeedRolePermissionsAsync(
