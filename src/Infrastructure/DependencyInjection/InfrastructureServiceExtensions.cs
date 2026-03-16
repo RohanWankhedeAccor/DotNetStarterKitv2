@@ -2,6 +2,7 @@ using Application.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Options;
 using Infrastructure.Persistence;
+using Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -103,6 +104,24 @@ public static class InfrastructureServiceExtensions
         // AddMemoryCache is idempotent — safe to call multiple times (e.g., in tests).
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, InMemoryCacheService>();
+
+        // ── Email service ─────────────────────────────────────────────────────────
+        // SmtpOptions are always bound so the section is available; ValidateOnStart
+        // is intentionally omitted — Host is optional (app runs fine without SMTP).
+        services.AddOptions<SmtpOptions>()
+            .BindConfiguration("Smtp");
+
+        // If Smtp:Host + Smtp:FromAddress are configured, send real emails via SMTP;
+        // otherwise use the no-op logging adapter so local/CI runs require no mail server.
+        var smtpOptions = configuration.GetSection("Smtp").Get<SmtpOptions>() ?? new SmtpOptions();
+        if (smtpOptions.IsConfigured)
+        {
+            services.AddScoped<IEmailService, SmtpEmailService>();
+        }
+        else
+        {
+            services.AddScoped<IEmailService, LoggingEmailService>();
+        }
 
         // ── Azure AD token validator (conditional) ────────────────────────────────
         // Only registered when TenantId, ClientId, and SpaClientId are all configured.
