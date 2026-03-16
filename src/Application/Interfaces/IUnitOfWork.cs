@@ -38,6 +38,14 @@ public interface IUnitOfWork
     IRepository<RolePermission> RolePermissions { get; }
 
     /// <summary>
+    /// Returns a composable query root for audit log entries.
+    /// Exposed for read-only queries — audit entries are written automatically by
+    /// the Infrastructure <c>ApplicationDbContext.SaveChangesAsync</c> override
+    /// whenever a <see cref="Domain.Common.BaseEntity"/> is added, modified, or deleted.
+    /// </summary>
+    IQueryable<AuditLog> AuditLogs { get; }
+
+    /// <summary>
     /// Persists all pending changes tracked across all repositories to the database
     /// in a single atomic operation.
     /// Audit fields (CreatedAt, CreatedBy, ModifiedAt, ModifiedBy) are stamped by

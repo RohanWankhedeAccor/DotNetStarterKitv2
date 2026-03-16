@@ -33,6 +33,9 @@ public interface IApplicationDbContext
     /// <summary>Gets the <see cref="DbSet{RolePermission}"/> for querying and persisting role-permission assignments.</summary>
     DbSet<RolePermission> RolePermissions { get; }
 
+    /// <summary>Gets the <see cref="DbSet{AuditLog}"/> for querying the audit trail.</summary>
+    DbSet<AuditLog> AuditLogs { get; }
+
     /// <summary>
     /// Saves all pending changes in the current unit of work to the database.
     /// The Infrastructure implementation's override automatically stamps audit fields

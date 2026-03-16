@@ -1,6 +1,7 @@
 using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Persistence.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;
 
@@ -51,6 +52,13 @@ internal sealed class EfUnitOfWork : IUnitOfWork
 
     /// <inheritdoc />
     public IRepository<RolePermission> RolePermissions { get; }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Exposes the AuditLogs DbSet as a raw IQueryable for read-only queries.
+    /// Writes happen automatically inside ApplicationDbContext.SaveChangesAsync.
+    /// </remarks>
+    public IQueryable<AuditLog> AuditLogs => _context.AuditLogs.AsNoTracking();
 
     /// <inheritdoc />
     /// <remarks>
