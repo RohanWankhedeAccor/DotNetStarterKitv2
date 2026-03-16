@@ -99,6 +99,11 @@ public static class InfrastructureServiceExtensions
         // JWT token service resolves IOptions<JwtOptions> via DI — no raw config reads.
         services.AddSingleton<ITokenService, JwtTokenService>();
 
+        // In-memory cache: Singleton so the cache is shared across all requests.
+        // AddMemoryCache is idempotent — safe to call multiple times (e.g., in tests).
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, InMemoryCacheService>();
+
         // ── Azure AD token validator (conditional) ────────────────────────────────
         // Only registered when TenantId, ClientId, and SpaClientId are all configured.
         // If any are absent, Azure AD login is disabled and only local JWT auth works.

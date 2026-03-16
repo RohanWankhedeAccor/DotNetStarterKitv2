@@ -16,22 +16,53 @@ namespace Application.Features.Users.Queries;
 /// Filtering is applied before counting so <c>TotalCount</c> reflects the filtered set,
 /// not the total number of users in the database.
 /// </para>
+///
+/// <para>
+/// Results are cached for 2 minutes via <see cref="ICacheService"/>.
+/// The cache key encodes all query parameters — different filter/sort/page combinations
+/// produce separate cache entries. Entries are invalidated when users are created or deleted
+/// (see <c>CreateUserCommandHandler</c>).
+/// </para>
 /// </summary>
 public sealed class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PagedResponse<UserDto>>
 {
+    /// <summary>
+    /// Prefix shared by all user-list cache entries.
+    /// Used by mutation handlers to invalidate the entire user cache in one call.
+    /// </summary>
+    internal const string CacheKeyPrefix = "users:";
+
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICacheService _cache;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GetUsersQueryHandler"/> class.
     /// </summary>
     /// <param name="unitOfWork">The Unit of Work providing repository access.</param>
-    public GetUsersQueryHandler(IUnitOfWork unitOfWork)
+    /// <param name="cache">Cache service for storing paginated results.</param>
+    public GetUsersQueryHandler(IUnitOfWork unitOfWork, ICacheService cache)
     {
         _unitOfWork = unitOfWork;
+        _cache = cache;
     }
 
     /// <inheritdoc />
-    public async Task<PagedResponse<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken)
+    public Task<PagedResponse<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken)
+    {
+        // Build a deterministic cache key from all query parameters.
+        var cacheKey = $"{CacheKeyPrefix}" +
+            $"p{request.PageNumber}:s{request.PageSize}:" +
+            $"q{request.Search}:st{(int?)request.Status}:" +
+            $"sb{request.SortBy}:sd{request.SortDescending}";
+
+        return _cache.GetOrSetAsync(
+            cacheKey,
+            ct => FetchAsync(request, ct),
+            absoluteExpiration: TimeSpan.FromMinutes(2),
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task<PagedResponse<UserDto>> FetchAsync(GetUsersQuery request, CancellationToken cancellationToken)
     {
         var query = _unitOfWork.Users.AsQueryable().AsNoTracking();
 

@@ -15,6 +15,7 @@ public class CreateUserCommandHandlerTests
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IRepository<User> _usersRepo = Substitute.For<IRepository<User>>();
     private readonly IPasswordHasher _passwordHasher = Substitute.For<IPasswordHasher>();
+    private readonly ICacheService _cache = Substitute.For<ICacheService>();
     private readonly IMapper _mapper;
     private readonly CreateUserCommandHandler _handler;
 
@@ -32,7 +33,7 @@ public class CreateUserCommandHandlerTests
         _passwordHasher.HashPassword(Arg.Any<string>()).Returns("hashed_password");
         _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 
-        _handler = new CreateUserCommandHandler(_unitOfWork, _mapper, _passwordHasher);
+        _handler = new CreateUserCommandHandler(_unitOfWork, _mapper, _passwordHasher, _cache);
     }
 
     [Fact]
