@@ -3,7 +3,6 @@ using Application.Features.Users.Dtos;
 using Application.Interfaces;
 using AutoMapper;
 using Domain.Entities;
-using Domain.Exceptions;
 using FluentAssertions;
 using NSubstitute;
 using Unit.Helpers;
@@ -39,33 +38,33 @@ public class CreateUserCommandHandlerTests
     [Fact]
     public async Task Handle_WithUniqueEmail_CreatesUserAndReturnsDto()
     {
-        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
-        // thread-local state issues when configuring IRepository<T>.Query.
         _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
 
         var result = await _handler.Handle(
             new CreateUserCommand { Email = "new@example.com", FirstName = "New", LastName = "User", Password = "password123" },
             default);
 
-        result.Email.Should().Be("new@example.com");
-        result.FirstName.Should().Be("New");
-        result.LastName.Should().Be("User");
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Email.Should().Be("new@example.com");
+        result.Value.FirstName.Should().Be("New");
+        result.Value.LastName.Should().Be("User");
         _usersRepo.Received(1).Add(Arg.Any<User>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_WithDuplicateEmail_ThrowsConflictException()
+    public async Task Handle_WithDuplicateEmail_ReturnsConflictError()
     {
         var existing = new User("taken@example.com", "Existing", "User", "hash");
         _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([existing]));
 
-        var act = () => _handler.Handle(
+        var result = await _handler.Handle(
             new CreateUserCommand { Email = "taken@example.com", FirstName = "Dupe", LastName = "User", Password = "password123" },
             default);
 
-        await act.Should().ThrowAsync<ConflictException>()
-            .WithMessage("*taken@example.com*");
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Conflict");
+        result.Error.Description.Should().Contain("taken@example.com");
     }
 
     [Fact]

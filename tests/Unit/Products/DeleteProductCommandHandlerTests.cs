@@ -1,7 +1,6 @@
 using Application.Features.Products.Commands;
 using Application.Interfaces;
 using Domain.Entities;
-using Domain.Exceptions;
 using FluentAssertions;
 using NSubstitute;
 using Unit.Helpers;
@@ -28,22 +27,24 @@ public class DeleteProductCommandHandlerTests
         var product = new Product("Widget", null, 9.99m, 10);
         _productsRepo.GetByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
 
-        await _handler.Handle(new DeleteProductCommand { Id = product.Id }, default);
+        var result = await _handler.Handle(new DeleteProductCommand { Id = product.Id }, default);
 
+        result.IsSuccess.Should().BeTrue();
         product.IsDeleted.Should().BeTrue();
         _productsRepo.Received(1).Update(product);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_WithNonExistentId_ThrowsNotFoundException()
+    public async Task Handle_WithNonExistentId_ReturnsNotFoundError()
     {
         var missingId = Guid.NewGuid();
         _productsRepo.GetByIdAsync(missingId, Arg.Any<CancellationToken>()).Returns((Product?)null);
 
-        var act = async () => await _handler.Handle(new DeleteProductCommand { Id = missingId }, default);
+        var result = await _handler.Handle(new DeleteProductCommand { Id = missingId }, default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("NotFound");
     }
 
     [Fact]

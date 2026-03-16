@@ -1,14 +1,15 @@
 using Application.Common;
+using Application.Common.Results;
 using Application.Features.Users.Dtos;
 using MediatR;
 
 namespace Application.Features.Users.Commands;
 
 /// <summary>
-/// Command to create a new user. Implements <see cref="IRequest{TResponse}"/>
-/// with response type <see cref="UserDto"/>.
+/// Command to create a new user.
+/// Returns <see cref="Result{T}"/> — callers must inspect <c>IsSuccess</c> rather than catching exceptions.
 /// </summary>
-public class CreateUserCommand : IRequest<UserDto>
+public class CreateUserCommand : IRequest<Result<UserDto>>
 {
     /// <summary>Gets or sets the email address for the new user.</summary>
     public required string Email { get; set; }

@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Users.Commands;
 using Application.Features.Users.Dtos;
 using MediatR;
@@ -43,7 +44,6 @@ public static class CreateUserEndpoint
 
         var result = await mediator.Send(command, cancellationToken);
 
-        // Return 201 Created with the new resource
-        return Results.Created($"/api/v1/users/{result.Id}", result);
+        return result.ToCreatedResult(u => $"/api/v1/users/{u.Id}");
     }
 }

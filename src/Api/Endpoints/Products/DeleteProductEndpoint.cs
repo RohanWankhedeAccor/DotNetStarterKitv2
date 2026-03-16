@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Products.Commands;
 using MediatR;
 
@@ -29,7 +30,7 @@ public static class DeleteProductEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        await mediator.Send(new DeleteProductCommand { Id = id }, cancellationToken);
-        return Results.NoContent();
+        var result = await mediator.Send(new DeleteProductCommand { Id = id }, cancellationToken);
+        return result.ToApiResult();
     }
 }

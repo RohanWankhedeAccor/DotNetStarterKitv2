@@ -1,6 +1,6 @@
+using Application.Common.Results;
 using Application.Features.Products.Queries;
 using Application.Interfaces;
-using Domain.Exceptions;
 using MediatR;
 
 namespace Application.Features.Products.Commands;
@@ -10,7 +10,7 @@ namespace Application.Features.Products.Commands;
 /// Soft-deletes the product via <see cref="Domain.Common.BaseEntity.Delete"/> and
 /// invalidates the products list cache.
 /// </summary>
-public sealed class DeleteProductCommandHandler : IRequestHandler<DeleteProductCommand>
+public sealed class DeleteProductCommandHandler : IRequestHandler<DeleteProductCommand, Result>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICacheService _cache;
@@ -23,10 +23,12 @@ public sealed class DeleteProductCommandHandler : IRequestHandler<DeleteProductC
     }
 
     /// <inheritdoc />
-    public async Task Handle(DeleteProductCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
     {
-        var product = await _unitOfWork.Products.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new NotFoundException("Product", request.Id);
+        var product = await _unitOfWork.Products.GetByIdAsync(request.Id, cancellationToken);
+
+        if (product is null)
+            return Error.NotFound("Product", request.Id);
 
         // Soft-delete: sets IsDeleted = true, picked up by the global EF query filter.
         product.Delete();
@@ -35,5 +37,7 @@ public sealed class DeleteProductCommandHandler : IRequestHandler<DeleteProductC
 
         // Invalidate product-list cache so deleted product no longer appears in list results.
         _cache.RemoveByPrefix(GetProductsQueryHandler.CacheKeyPrefix);
+
+        return Result.Success();
     }
 }

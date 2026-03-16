@@ -1,13 +1,14 @@
+using Application.Common.Results;
 using Application.Features.Products.Dtos;
 using MediatR;
 
 namespace Application.Features.Products.Commands;
 
 /// <summary>
-/// Command to create a new product. Implements <see cref="IRequest{TResponse}"/>
-/// with response type <see cref="ProductDto"/>.
+/// Command to create a new product.
+/// Returns <see cref="Result{T}"/> — callers must inspect <c>IsSuccess</c> rather than catching exceptions.
 /// </summary>
-public class CreateProductCommand : IRequest<ProductDto>
+public class CreateProductCommand : IRequest<Result<ProductDto>>
 {
     /// <summary>Gets or sets the display name of the product.</summary>
     public required string Name { get; set; }

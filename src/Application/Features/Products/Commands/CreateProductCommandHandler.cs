@@ -1,3 +1,4 @@
+using Application.Common.Results;
 using Application.Features.Products.Dtos;
 using Application.Features.Products.Queries;
 using Application.Interfaces;
@@ -11,7 +12,7 @@ namespace Application.Features.Products.Commands;
 /// Handler for <see cref="CreateProductCommand"/>.
 /// Creates a new product and invalidates the products list cache.
 /// </summary>
-public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, ProductDto>
+public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, Result<ProductDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IMapper _mapper;
@@ -26,7 +27,7 @@ public sealed class CreateProductCommandHandler : IRequestHandler<CreateProductC
     }
 
     /// <inheritdoc />
-    public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
         var product = new Product(
             name: request.Name,

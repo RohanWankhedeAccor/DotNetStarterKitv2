@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Users.Commands;
 using MediatR;
 
@@ -38,8 +39,8 @@ public static class AssignRoleEndpoint
             RoleName = request.RoleName
         };
 
-        await mediator.Send(command, cancellationToken);
-        return Results.NoContent();
+        var result = await mediator.Send(command, cancellationToken);
+        return result.ToApiResult();
     }
 }
 

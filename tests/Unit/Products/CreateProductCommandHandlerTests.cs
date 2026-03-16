@@ -42,10 +42,11 @@ public class CreateProductCommandHandlerTests
 
         var result = await _handler.Handle(command, default);
 
-        result.Name.Should().Be("Widget");
-        result.Price.Should().Be(9.99m);
-        result.StockQuantity.Should().Be(100);
-        result.IsActive.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Name.Should().Be("Widget");
+        result.Value.Price.Should().Be(9.99m);
+        result.Value.StockQuantity.Should().Be(100);
+        result.Value.IsActive.Should().BeTrue();
 
         _productsRepo.Received(1).Add(Arg.Is<Product>(p =>
             p.Name == "Widget" &&

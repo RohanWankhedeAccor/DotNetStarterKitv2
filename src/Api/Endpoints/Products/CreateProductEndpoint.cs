@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Products.Commands;
 using Application.Features.Products.Dtos;
 using MediatR;
@@ -40,6 +41,6 @@ public static class CreateProductEndpoint
 
         var result = await mediator.Send(command, cancellationToken);
 
-        return Results.Created($"/api/v1/products/{result.Id}", result);
+        return result.ToCreatedResult(p => $"/api/v1/products/{p.Id}");
     }
 }

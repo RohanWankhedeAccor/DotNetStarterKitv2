@@ -1,6 +1,6 @@
+using Application.Common.Results;
 using Application.Features.Products.Dtos;
 using Application.Interfaces;
-using Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,8 +10,9 @@ namespace Application.Features.Products.Queries;
 /// Handler for <see cref="GetProductByIdQuery"/>.
 /// Projects directly to <see cref="ProductDto"/> via <c>Select()</c> to avoid
 /// loading the full entity when only the DTO fields are needed.
+/// Returns <see cref="Error.NotFound"/> when the product does not exist or has been soft-deleted.
 /// </summary>
-public sealed class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, ProductDto>
+public sealed class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, Result<ProductDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
 
@@ -22,7 +23,7 @@ public sealed class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQ
     }
 
     /// <inheritdoc />
-    public async Task<ProductDto> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<ProductDto>> Handle(GetProductByIdQuery request, CancellationToken cancellationToken)
     {
         var product = await _unitOfWork.Products
             .AsQueryable()
@@ -41,8 +42,10 @@ public sealed class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQ
                 ModifiedAt = p.ModifiedAt,
                 ModifiedBy = p.ModifiedBy
             })
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new NotFoundException("Product", request.Id);
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (product is null)
+            return Error.NotFound("Product", request.Id);
 
         return product;
     }

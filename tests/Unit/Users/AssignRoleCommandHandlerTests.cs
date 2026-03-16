@@ -1,14 +1,9 @@
 using Application.Features.Users.Commands;
 using Application.Interfaces;
 using Domain.Entities;
-using Domain.Exceptions;
 using FluentAssertions;
-using MediatR;
 using NSubstitute;
 using Unit.Helpers;
-
-// Disambiguate: MediatR.Unit vs the test project namespace 'Unit'
-using MediatRUnit = MediatR.Unit;
 
 namespace Unit.Users;
 
@@ -30,13 +25,11 @@ public class AssignRoleCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ValidInput_CreatesUserRoleAndReturnsUnit()
+    public async Task Handle_ValidInput_CreatesUserRoleAndSucceeds()
     {
         var user = CreateActiveUser("test@example.com");
         var role = new Role("Editor", "Can view and create users.");
 
-        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
-        // thread-local state issues when configuring IRepository<T>.Query.
         _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([user]));
         _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([role]));
         _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
@@ -45,26 +38,27 @@ public class AssignRoleCommandHandlerTests
         var result = await _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "Editor" }, default);
 
-        result.Should().Be(MediatRUnit.Value);
+        result.IsSuccess.Should().BeTrue();
         _userRolesRepo.Received(1).Add(Arg.Any<UserRole>());
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_UserNotFound_ThrowsNotFoundException()
+    public async Task Handle_UserNotFound_ReturnsNotFoundError()
     {
         _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
         _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([]));
         _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
 
-        var act = () => _handler.Handle(
+        var result = await _handler.Handle(
             new AssignRoleCommand { UserId = Guid.NewGuid(), RoleName = "Editor" }, default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("NotFound");
     }
 
     [Fact]
-    public async Task Handle_RoleNotFound_ThrowsNotFoundException()
+    public async Task Handle_RoleNotFound_ReturnsNotFoundError()
     {
         var user = CreateActiveUser("test@example.com");
 
@@ -72,10 +66,11 @@ public class AssignRoleCommandHandlerTests
         _rolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<Role>([]));
         _userRolesRepo.AsQueryable().Returns(new TestAsyncEnumerable<UserRole>([]));
 
-        var act = () => _handler.Handle(
+        var result = await _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "NonExistent" }, default);
 
-        await act.Should().ThrowAsync<NotFoundException>();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("NotFound");
     }
 
     [Fact]
@@ -92,7 +87,7 @@ public class AssignRoleCommandHandlerTests
         var result = await _handler.Handle(
             new AssignRoleCommand { UserId = user.Id, RoleName = "Editor" }, default);
 
-        result.Should().Be(MediatRUnit.Value);
+        result.IsSuccess.Should().BeTrue();
         _userRolesRepo.DidNotReceive().Add(Arg.Any<UserRole>());
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }

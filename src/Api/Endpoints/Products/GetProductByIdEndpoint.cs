@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Products.Dtos;
 using Application.Features.Products.Queries;
 using MediatR;
@@ -30,6 +31,6 @@ public static class GetProductByIdEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new GetProductByIdQuery { Id = id }, cancellationToken);
-        return Results.Ok(result);
+        return result.ToApiResult();
     }
 }
