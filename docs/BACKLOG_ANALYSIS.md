@@ -70,7 +70,7 @@ Key files: `src/Application/Interfaces/IFileStorageService.cs`, `src/Infrastruct
 Key files: `src/Application/Interfaces/IHttpApiClient.cs`, `src/Infrastructure/Services/HttpApiClient.cs`
 
 **11. Background Job Support — Absent**
-No Hangfire, Quartz.NET, `IHostedService`, or `BackgroundService`. Listed in CLAUDE.md as Phase 2+.
+No Hangfire, Quartz.NET, `IHostedService`, or `BackgroundService`. 
 
 **12. Feature Flags — Absent**
 No `Microsoft.FeatureManagement`, no `FeatureManagement` config section, no `IFeatureManager` usage.
