@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Users.Dtos;
 using Application.Features.Users.Queries;
 using MediatR;
@@ -22,7 +23,8 @@ public static class GetUserByIdEndpoint
             .Produces<UserDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound)
             .Produces(StatusCodes.Status401Unauthorized)
-            .RequireAuthorization();
+            .Produces(StatusCodes.Status403Forbidden)
+            .RequireAuthorization("CanViewUsers");
     }
 
     private static async Task<IResult> GetUserById(
@@ -33,6 +35,6 @@ public static class GetUserByIdEndpoint
         var query = new GetUserByIdQuery { Id = id };
         var result = await mediator.Send(query, cancellationToken);
 
-        return Results.Ok(result);
+        return result.ToApiResult();
     }
 }

@@ -12,7 +12,8 @@ namespace Unit.Auth;
 
 public class AzureLoginCommandHandlerTests
 {
-    private readonly IApplicationDbContext _context = Substitute.For<IApplicationDbContext>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
+    private readonly IRepository<User> _usersRepo = Substitute.For<IRepository<User>>();
     private readonly IAzureAdTokenValidator _validator = Substitute.For<IAzureAdTokenValidator>();
     private readonly ITokenService _tokenService = Substitute.For<ITokenService>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
@@ -20,9 +21,13 @@ public class AzureLoginCommandHandlerTests
 
     public AzureLoginCommandHandlerTests()
     {
-        _handler = new AzureLoginCommandHandler(_context, _validator, _tokenService, _currentUser);
+        _unitOfWork.Users.Returns(_usersRepo);
+
+        _handler = new AzureLoginCommandHandler(_unitOfWork, _validator, _tokenService, _currentUser);
         _tokenService.ExpirationMinutes.Returns(60);
-        _tokenService.GenerateToken(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IEnumerable<string>>())
+        _tokenService.GenerateToken(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<IEnumerable<string>>(), Arg.Any<IEnumerable<string>>())
             .Returns("test.azure.jwt");
     }
 
@@ -30,32 +35,33 @@ public class AzureLoginCommandHandlerTests
     public async Task Handle_WithValidToken_CreatesNewUserAndReturnsLoginResponse()
     {
         SetupValidatorReturns("oid-123", "azure@example.com", "Azure User");
-        var usersSet = DbSetMockHelper.Create<User>([]);
-        _context.Users.Returns(usersSet);
-        _context.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
+        // Use TestAsyncEnumerable directly (not a NSubstitute substitute) to avoid
+        // thread-local state issues when configuring IRepository<T>.Query.
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([]));
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await _handler.Handle(new AzureLoginCommand("valid.token"), default);
 
         result.Token.Should().Be("test.azure.jwt");
         result.Email.Should().Be("azure@example.com");
-        await _context.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_WithExistingUser_UpdatesDisplayNameAndReturnsToken()
     {
         SetupValidatorReturns("oid-123", "azure@example.com", "Updated Name");
-        var existing = new User("azure@example.com", "Old Name", null);
+        var existing = new User("azure@example.com", "Old", "Name", null);
         existing.ProvisionAzureAd("oid-123");
         existing.Activate();
-        var usersSet = DbSetMockHelper.Create([existing]);
-        _context.Users.Returns(usersSet);
-        _context.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
+        _usersRepo.AsQueryable().Returns(new TestAsyncEnumerable<User>([existing]));
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(1);
 
         var result = await _handler.Handle(new AzureLoginCommand("valid.token"), default);
 
         result.Token.Should().Be("test.azure.jwt");
-        existing.FullName.Should().Be("Updated Name");
+        existing.FirstName.Should().Be("Updated");
+        existing.LastName.Should().Be("Name");
     }
 
     [Fact]

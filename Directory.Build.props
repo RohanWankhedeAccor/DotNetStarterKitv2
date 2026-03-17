@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Suppress GHSA-rvv3-g6hj-g44x for AutoMapper.
+    No patched version of AutoMapper or AutoMapper.Extensions.Microsoft.DependencyInjection
+    is currently available on NuGet that resolves this advisory. Suppressed until a fix ships.
+    Track: https://github.com/advisories/GHSA-rvv3-g6hj-g44x
+  -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-rvv3-g6hj-g44x" />
+  </ItemGroup>
+</Project>

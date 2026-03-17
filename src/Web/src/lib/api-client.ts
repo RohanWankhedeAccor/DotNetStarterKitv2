@@ -1,4 +1,6 @@
 import axios from 'axios'
+import { store } from './redux/store'
+import { clearUser } from './redux/authSlice'
 
 // Use empty base URL in dev so requests go through Vite proxy (/api → https://localhost:5001)
 // This avoids browser SSL certificate warnings with self-signed dev certs
@@ -21,7 +23,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.error('Unauthorized - please login')
+      // Cookie has expired or is missing — clear stale Redux/localStorage auth state
+      // so the UI returns to the logged-out state instead of looping on 401s.
+      store.dispatch(clearUser())
     }
     return Promise.reject(error)
   }

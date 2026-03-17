@@ -10,10 +10,12 @@ public interface ITokenService
     /// </summary>
     /// <param name="userId">The user's unique identifier (as string)</param>
     /// <param name="email">The user's email address</param>
-    /// <param name="fullName">The user's full name</param>
+    /// <param name="firstName">The user's first name</param>
+    /// <param name="lastName">The user's last name</param>
     /// <param name="roles">Collection of role names assigned to the user</param>
+    /// <param name="permissions">Collection of permission keys derived from the user's roles (e.g. "users.create")</param>
     /// <returns>A signed JWT token as a string</returns>
-    string GenerateToken(string userId, string email, string fullName, IEnumerable<string> roles);
+    string GenerateToken(string userId, string email, string firstName, string lastName, IEnumerable<string> roles, IEnumerable<string> permissions);
 
     /// <summary>
     /// Validates a JWT token and extracts claims if valid.

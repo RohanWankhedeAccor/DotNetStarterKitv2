@@ -48,6 +48,8 @@ internal sealed class DesignTimeCurrentUserService : Application.Interfaces.ICur
 {
     public Guid UserId => Guid.Empty;
     public string UserIdString => string.Empty;
+    public IEnumerable<string> Roles => [];
+    public IEnumerable<string> Permissions => [];
 }
 
 /// <summary>

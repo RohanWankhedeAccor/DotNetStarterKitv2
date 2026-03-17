@@ -54,4 +54,10 @@ public sealed class Role : BaseEntity
     /// it must never be assigned directly from application code.
     /// </summary>
     public ICollection<UserRole> UserRoles { get; private set; } = [];
+
+    /// <summary>
+    /// Gets the permissions granted to this role via the RolePermission junction table.
+    /// Populated exclusively by EF Core during query materialisation when an Include clause is present.
+    /// </summary>
+    public ICollection<RolePermission> RolePermissions { get; private set; } = [];
 }

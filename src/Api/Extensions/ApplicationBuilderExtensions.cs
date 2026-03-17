@@ -1,6 +1,8 @@
 using Api.Endpoints.Auth;
+using Api.Endpoints.Products;
 using Api.Endpoints.Users;
 using Api.Middleware;
+using Serilog;
 
 namespace Api.Extensions;
 
@@ -26,6 +28,24 @@ public static class ApplicationBuilderExtensions
 
         // Global exception handler (must be first)
         app.UseMiddleware<ExceptionHandlerMiddleware>();
+
+        // Assigns / propagates X-Correlation-Id and pushes it into Serilog LogContext.
+        // Placed inside ExceptionHandlerMiddleware so the exception log also carries the ID.
+        app.UseMiddleware<CorrelationIdMiddleware>();
+
+        // Structured HTTP request/response logging via Serilog.
+        // Placed after CorrelationIdMiddleware so the request completion log includes CorrelationId.
+        app.UseSerilogRequestLogging(opts =>
+        {
+            opts.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms | CorrelationId: {CorrelationId}";
+            // Enrich Serilog's per-request diagnostic context with the correlation ID
+            // so it appears as a structured property (not just inline in the message).
+            opts.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+            {
+                if (httpContext.Items[CorrelationIdMiddleware.ItemsKey] is string correlationId)
+                    diagnosticContext.Set(CorrelationIdMiddleware.ItemsKey, correlationId);
+            };
+        });
 
         // HTTPS redirection (enforce HTTPS in production)
         if (!app.Environment.IsDevelopment())
@@ -77,6 +97,13 @@ public static class ApplicationBuilderExtensions
         app.MapCreateUser();
         app.MapGetUserById();
         app.MapGetUsers();
+        app.MapAssignRole();
+
+        // Product endpoints
+        app.MapCreateProduct();
+        app.MapGetProductById();
+        app.MapGetProducts();
+        app.MapDeleteProduct();
 
         // Health check endpoint
         app.MapHealthCheck();

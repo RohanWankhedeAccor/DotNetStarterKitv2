@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Auth.Commands;
 using Application.Features.Auth.Dtos;
 using MediatR;
@@ -39,8 +40,12 @@ public static class LoginEndpoint
     {
         var command = new LoginCommand(request.Email, request.Password);
         var result = await mediator.Send(command, cancellationToken);
-        SetAuthCookie(httpContext, result.Token, result.ExpiresIn);
-        return Results.Ok(ToUserInfo(result));
+
+        return result.ToApiResult(response =>
+        {
+            SetAuthCookie(httpContext, response.Token, response.ExpiresIn);
+            return Results.Ok(ToUserInfo(response));
+        });
     }
 
     internal static void SetAuthCookie(HttpContext httpContext, string token, int expiresInSeconds)
@@ -59,7 +64,8 @@ public static class LoginEndpoint
     {
         UserId = r.UserId,
         Email = r.Email,
-        FullName = r.FullName,
+        FirstName = r.FirstName,
+        LastName = r.LastName,
         Roles = r.Roles,
         ExpiresIn = r.ExpiresIn,
     };
@@ -80,8 +86,11 @@ public class UserInfoResponse
     /// <summary>Gets or sets the user's email address.</summary>
     public required string Email { get; set; }
 
-    /// <summary>Gets or sets the user's full name.</summary>
-    public required string FullName { get; set; }
+    /// <summary>Gets or sets the user's first name.</summary>
+    public required string FirstName { get; set; }
+
+    /// <summary>Gets or sets the user's last name.</summary>
+    public required string LastName { get; set; }
 
     /// <summary>Gets or sets the roles assigned to the user.</summary>
     public required IEnumerable<string> Roles { get; set; }

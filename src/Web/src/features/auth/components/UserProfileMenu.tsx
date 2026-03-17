@@ -19,13 +19,13 @@ export const UserProfileMenu: React.FC<{ fallbackName?: string; fallbackEmail?: 
 
   // Use Redux user data if available, otherwise use fallback (for local login)
   const email = user.email || fallbackEmail;
-  const fullName = user.fullName || fallbackName;
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || fallbackName;
 
   if (!email) {
     return null; // Don't show if not logged in
   }
 
-  const initials = (fullName || email)
+  const initials = (displayName || email)
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -55,7 +55,7 @@ export const UserProfileMenu: React.FC<{ fallbackName?: string; fallbackEmail?: 
         {/* User Info */}
         <div className="flex-1 text-left min-w-0">
           <p className="text-sm font-medium text-white truncate">
-            {user.fullName || 'User'}
+            {displayName || 'User'}
           </p>
           <p className="text-xs text-gray-400 truncate">{user.email}</p>
         </div>

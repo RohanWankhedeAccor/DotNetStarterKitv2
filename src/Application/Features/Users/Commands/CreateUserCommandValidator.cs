@@ -5,7 +5,8 @@ namespace Application.Features.Users.Commands;
 /// <summary>
 /// Validator for <see cref="CreateUserCommand"/>. Enforces:
 /// - Email: required, non-empty, valid email format
-/// - FullName: required, non-empty, max 200 characters
+/// - FirstName: required, non-empty, max 100 characters
+/// - LastName: required, non-empty, max 100 characters
 /// - Password: required, non-empty, min 8 characters (Phase 2: enhance with complexity rules)
 ///
 /// This validator is automatically discovered and registered by the Application service
@@ -24,11 +25,17 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
             .EmailAddress()
             .WithMessage("Email must be a valid email address.");
 
-        RuleFor(x => x.FullName)
+        RuleFor(x => x.FirstName)
             .NotEmpty()
-            .WithMessage("Full name is required.")
-            .MaximumLength(200)
-            .WithMessage("Full name must not exceed 200 characters.");
+            .WithMessage("First name is required.")
+            .MaximumLength(100)
+            .WithMessage("First name must not exceed 100 characters.");
+
+        RuleFor(x => x.LastName)
+            .NotEmpty()
+            .WithMessage("Last name is required.")
+            .MaximumLength(100)
+            .WithMessage("Last name must not exceed 100 characters.");
 
         RuleFor(x => x.Password)
             .NotEmpty()

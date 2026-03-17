@@ -1,3 +1,4 @@
+using Api.Extensions;
 using Application.Features.Users.Commands;
 using Application.Features.Users.Dtos;
 using MediatR;
@@ -23,7 +24,8 @@ public static class CreateUserEndpoint
             .Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status401Unauthorized)
-            .RequireAuthorization();
+            .Produces(StatusCodes.Status403Forbidden)
+            .RequireAuthorization("CanCreateUser");
     }
 
     private static async Task<IResult> CreateUser(
@@ -35,13 +37,13 @@ public static class CreateUserEndpoint
         var command = new CreateUserCommand
         {
             Email = request.Email,
-            FullName = request.FullName,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
             Password = request.Password
         };
 
         var result = await mediator.Send(command, cancellationToken);
 
-        // Return 201 Created with the new resource
-        return Results.Created($"/api/v1/users/{result.Id}", result);
+        return result.ToCreatedResult(u => $"/api/v1/users/{u.Id}");
     }
 }
