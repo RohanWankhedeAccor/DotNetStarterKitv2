@@ -2,18 +2,17 @@ import { PublicClientApplication, Configuration, LogLevel } from '@azure/msal-br
 
 /**
  * MSAL (Microsoft Authentication Library) configuration for Azure AD integration.
- * Phase 12: Frontend Azure AD login setup.
  *
- * Configuration details:
+ * Shared App Registration with ExpatV2 (Accor tenant):
  * - Tenant ID: 3ee81190-954b-4064-8e7d-f12fd761fd39
- * - SPA Client ID: a51f9d7f-eec3-403d-af05-18d54a18f248
+ * - Client ID: 2b8799fd-16e3-4bb1-92a5-babd0a8d2cee
  * - Authority: https://login.microsoftonline.com/{tenantId}
- * - Scopes: api://ae60f82b-2dc4-4212-884a-3a50d79bb768/access_as_user
+ * - Scopes: openid, profile, email (ID token; exchanged for internal JWT at /api/v1/auth/azure-login)
  */
 
 const msalConfig: Configuration = {
   auth: {
-    clientId: 'a51f9d7f-eec3-403d-af05-18d54a18f248', // SPA Client ID
+    clientId: '2b8799fd-16e3-4bb1-92a5-babd0a8d2cee', // ExpatV2 App Registration
     authority: 'https://login.microsoftonline.com/3ee81190-954b-4064-8e7d-f12fd761fd39', // Tenant
     redirectUri: window.location.origin, // e.g., http://localhost:5173
     postLogoutRedirectUri: window.location.origin,
