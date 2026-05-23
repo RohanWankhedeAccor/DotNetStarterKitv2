@@ -2,18 +2,17 @@ import { PublicClientApplication, Configuration, LogLevel } from '@azure/msal-br
 
 /**
  * MSAL (Microsoft Authentication Library) configuration for Azure AD integration.
- * Phase 12: Frontend Azure AD login setup.
  *
- * Configuration details:
- * - Tenant ID: 3ee81190-954b-4064-8e7d-f12fd761fd39
- * - SPA Client ID: a51f9d7f-eec3-403d-af05-18d54a18f248
- * - Authority: https://login.microsoftonline.com/{tenantId}
- * - Scopes: api://ae60f82b-2dc4-4212-884a-3a50d79bb768/access_as_user
+ * Accor Azure AD tenant — uses SPA registration (APP-Expat-SPA-DEV):
+ * - Tenant ID:   3ee81190-954b-4064-8e7d-f12fd761fd39
+ * - SPA Client ID: 3024025c-2f2d-446d-8131-891e576f3927  (APP-Expat-SPA-DEV)
+ * - API Client ID: 2b8799fd-16e3-4bb1-92a5-babd0a8d2cee  (APP-Expat-API-DEV, set in appsettings)
+ * - Scopes: openid, profile, email (ID token exchanged for internal JWT at /api/v1/auth/azure-login)
  */
 
 const msalConfig: Configuration = {
   auth: {
-    clientId: 'a51f9d7f-eec3-403d-af05-18d54a18f248', // SPA Client ID
+    clientId: '3024025c-2f2d-446d-8131-891e576f3927', // APP-Expat-SPA-DEV
     authority: 'https://login.microsoftonline.com/3ee81190-954b-4064-8e7d-f12fd761fd39', // Tenant
     redirectUri: window.location.origin, // e.g., http://localhost:5173
     postLogoutRedirectUri: window.location.origin,
