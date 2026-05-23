@@ -3,16 +3,16 @@ import { PublicClientApplication, Configuration, LogLevel } from '@azure/msal-br
 /**
  * MSAL (Microsoft Authentication Library) configuration for Azure AD integration.
  *
- * Shared App Registration with ExpatV2 (Accor tenant):
- * - Tenant ID: 3ee81190-954b-4064-8e7d-f12fd761fd39
- * - Client ID: 2b8799fd-16e3-4bb1-92a5-babd0a8d2cee
- * - Authority: https://login.microsoftonline.com/{tenantId}
- * - Scopes: openid, profile, email (ID token; exchanged for internal JWT at /api/v1/auth/azure-login)
+ * Accor Azure AD tenant — uses SPA registration (APP-Expat-SPA-DEV):
+ * - Tenant ID:   3ee81190-954b-4064-8e7d-f12fd761fd39
+ * - SPA Client ID: 3024025c-2f2d-446d-8131-891e576f3927  (APP-Expat-SPA-DEV)
+ * - API Client ID: 2b8799fd-16e3-4bb1-92a5-babd0a8d2cee  (APP-Expat-API-DEV, set in appsettings)
+ * - Scopes: openid, profile, email (ID token exchanged for internal JWT at /api/v1/auth/azure-login)
  */
 
 const msalConfig: Configuration = {
   auth: {
-    clientId: '2b8799fd-16e3-4bb1-92a5-babd0a8d2cee', // ExpatV2 App Registration
+    clientId: '3024025c-2f2d-446d-8131-891e576f3927', // APP-Expat-SPA-DEV
     authority: 'https://login.microsoftonline.com/3ee81190-954b-4064-8e7d-f12fd761fd39', // Tenant
     redirectUri: window.location.origin, // e.g., http://localhost:5173
     postLogoutRedirectUri: window.location.origin,
